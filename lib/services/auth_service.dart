@@ -16,9 +16,8 @@ class AuthService {
       UserCredential result = await _auth.signInWithEmailAndPassword(
           email: email, password: password);
       return result.user;
-    } catch (e) {
-      print(e.toString());
-      return null;
+    } on FirebaseAuthException {
+      rethrow;
     }
   }
 
@@ -28,9 +27,8 @@ class AuthService {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
           email: email, password: password);
       return result.user;
-    } catch (e) {
-      print(e.toString());
-      return null;
+    } on FirebaseAuthException {
+      rethrow;
     }
   }
 
@@ -38,8 +36,10 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser!.authentication;
+      final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+      if (googleAuth == null) {
+        return null; // User cancelled or failed to sign in
+      }
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,

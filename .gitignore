@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+lib/services/api_keys.dart
+cohousematch-firebase-adminsdk-fbsvc-8ef3f3d293.json
+firebase.json

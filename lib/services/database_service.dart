@@ -24,7 +24,9 @@ class DatabaseService {
       List<String>? personalityTags,
       List<String>? lifestyleDetails,
       double? budget,
-      String? location) async {
+      String? location,
+      String? gender,
+      int? age) async {
     return await userCollection.doc(uid).set({
       'email': email,
       'name': name,
@@ -34,6 +36,8 @@ class DatabaseService {
       'lifestyleDetails': lifestyleDetails,
       'budget': budget,
       'location': location,
+      'gender': gender,
+      'age': age,
     }, SetOptions(merge: true));
   }
 
@@ -57,9 +61,49 @@ class DatabaseService {
     );
   }
 
-  // get user doc stream
+  // get user doc stream for the current uid
   Stream<UserData> get userData {
     return userCollection.doc(uid).snapshots().map(_userDataFromSnapshot);
+  }
+
+  // get user doc stream for a specific uid
+  Stream<UserData> userDataFromUid(String targetUid) {
+    return userCollection.doc(targetUid).snapshots().map((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) {
+        // Return a UserData object with default values if the document doesn't exist
+        return UserData(
+          uid: targetUid,
+          email: '',
+          name: null,
+          bio: null,
+          photoUrl: null,
+          personalityTags: null,
+          lifestyleDetails: null,
+          budget: null,
+          location: null,
+          gender: null,
+          age: null,
+        );
+      }
+      Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+      return UserData(
+        uid: targetUid,
+        email: data['email'] ?? '',
+        name: data['name'],
+        bio: data['bio'],
+        photoUrl: data['photoUrl'],
+        personalityTags: data['personalityTags'] != null
+            ? List<String>.from(data['personalityTags'])
+            : null,
+        lifestyleDetails: data['lifestyleDetails'] != null
+            ? List<String>.from(data['lifestyleDetails'])
+            : null,
+        budget: data['budget']?.toDouble(),
+        location: data['location'],
+        gender: data['gender'],
+        age: data['age'],
+      );
+    });
   }
 
   // Send message
@@ -94,16 +138,29 @@ class DatabaseService {
   }
 
   // Create a match
-  Future<void> createMatch(String user1Id, String user2Id) async {
+  Future<void> createMatch(String user1Id, String user2Id, {List<String>? groupMembers}) async {
     // Ensure unique match document ID by sorting user IDs
     List<String> ids = [user1Id, user2Id];
-    ids.sort();
+    String matchType = 'individual';
+    List<String> members = [];
+
+    if (groupMembers != null && groupMembers.length > 2) {
+      ids = groupMembers..sort();
+      matchType = 'group';
+      members = groupMembers;
+    } else {
+      ids.sort();
+      members = [user1Id, user2Id];
+    }
+
     String matchId = ids.join('_');
 
     await matchesCollection.doc(matchId).set({
       'user1Id': user1Id,
       'user2Id': user2Id,
       'timestamp': FieldValue.serverTimestamp(),
+      'type': matchType,
+      'members': members,
     });
   }
 
@@ -125,7 +182,15 @@ class DatabaseService {
           .map((doc) => Match.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
     });
-    return Rx.merge<List<Match>>([matchesAsUser1, matchesAsUser2]);
+    Stream<List<Match>> matchesAsMember = matchesCollection
+        .where('members', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Match.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+    });
+    return Rx.merge<List<Match>>([matchesAsUser1, matchesAsUser2, matchesAsMember]);
   }
 
   // Get all users

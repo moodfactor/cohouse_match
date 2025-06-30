@@ -23,6 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _photoUrl;
   List<String>? _personalityTags;
   List<String>? _lifestyleDetails;
+  double? _budget;
+  String? _location;
+  String? _gender;
+  int? _age;
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
 
@@ -52,16 +56,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
 
+    if (user == null) {
+      return const Center(child: CircularProgressIndicator()); // Or a login prompt
+    }
+
     return StreamBuilder<UserData>(
-      stream: DatabaseService(uid: user!.uid).userData,
+      stream: DatabaseService(uid: user.uid).userData,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           UserData? userData = snapshot.data;
-          _name = _name ?? userData?.name;
-          _bio = _bio ?? userData?.bio;
-          _photoUrl = _photoUrl ?? userData?.photoUrl;
-          _personalityTags = _personalityTags ?? userData?.personalityTags;
-          _lifestyleDetails = _lifestyleDetails ?? userData?.lifestyleDetails;
+          _name = userData?.name;
+          _bio = userData?.bio;
+          _photoUrl = userData?.photoUrl;
+          _personalityTags = userData?.personalityTags;
+          _lifestyleDetails = userData?.lifestyleDetails;
+          _budget = userData?.budget;
+          _location = userData?.location;
+          _gender = userData?.gender;
+          _age = userData?.age;
 
           return Scaffold(
             appBar: AppBar(
@@ -104,6 +116,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onChanged: (val) => setState(() => _bio = val),
                     ),
                     const SizedBox(height: 20.0),
+                    TextFormField(
+                      initialValue: _budget?.toString(),
+                      decoration: const InputDecoration(labelText: 'Budget'),
+                      keyboardType: TextInputType.number,
+                      validator: (val) =>
+                          val!.isEmpty ? 'Please enter a budget' : null,
+                      onChanged: (val) => setState(() => _budget = double.tryParse(val)),
+                    ),
+                    const SizedBox(height: 20.0),
+                    TextFormField(
+                      initialValue: _location,
+                      decoration: const InputDecoration(labelText: 'Location'),
+                      validator: (val) =>
+                          val!.isEmpty ? 'Please enter a location' : null,
+                      onChanged: (val) => setState(() => _location = val),
+                    ),
+                    const SizedBox(height: 20.0),
+                    DropdownButtonFormField<String>(
+                      value: _gender,
+                      decoration: const InputDecoration(labelText: 'Gender'),
+                      items: <String>['Male', 'Female', 'Other']
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _gender = newValue;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20.0),
+                    TextFormField(
+                      initialValue: _age?.toString(),
+                      decoration: const InputDecoration(labelText: 'Age'),
+                      keyboardType: TextInputType.number,
+                      validator: (val) =>
+                          val!.isEmpty ? 'Please enter your age' : null,
+                      onChanged: (val) => setState(() => _age = int.tryParse(val)),
+                    ),
+                    const SizedBox(height: 20.0),
                     const Text('Personality Tags:'),
                     MultiSelectChip(
                       ['Introvert', 'Extrovert', 'Thinker', 'Feeler', 'Organized', 'Spontaneous'],
@@ -138,8 +193,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             newPhotoUrl ?? _photoUrl,
                             _personalityTags,
                             _lifestyleDetails,
-                            null, // budget
-                            null, // location
+                            _budget,
+                            _location,
+                            _gender,
+                            _age,
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Profile Updated')),

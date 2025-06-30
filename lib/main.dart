@@ -11,7 +11,18 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<AuthService>(create: (_) => AuthService()),
+        StreamProvider<User?>(
+          create: (context) => context.read<AuthService>().user,
+          initialData: null,
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -19,16 +30,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamProvider<User?>.value(
-      value: AuthService().user,
-      initialData: null,
-      child: MaterialApp(
-        title: 'CohouseMatch',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        home: const Wrapper(),
+    return MaterialApp(
+      title: 'CohouseMatch',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
       ),
+      home: const Wrapper(),
     );
   }
 }

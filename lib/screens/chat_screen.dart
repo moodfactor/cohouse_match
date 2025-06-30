@@ -1,67 +1,61 @@
 import 'package:flutter/material.dart';
-import 'package:cohouse_match/models/message.dart';
-import 'package:cohouse_match/services/database_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
+import 'package:cohouse_match/models/message.dart';
+import 'package:cohouse_match/models/user.dart';
+import 'package:cohouse_match/services/database_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  final String receiverId;
-  final String receiverName;
+  final String chatPartnerId;
+  final String chatPartnerName;
 
-  const ChatScreen({super.key, required this.receiverId, required this.receiverName});
+  const ChatScreen({super.key, required this.chatPartnerId, required this.chatPartnerName});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _messageController = TextEditingController();
-  final DatabaseService _databaseService = DatabaseService();
-  User? _currentUser;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _currentUser = Provider.of<User?>(context);
-  }
-
-  void _sendMessage() async {
-    if (_messageController.text.isNotEmpty && _currentUser != null) {
-      await _databaseService.sendMessage(
-        _currentUser!.uid,
-        widget.receiverId,
-        _messageController.text,
-      );
-      _messageController.clear();
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = _auth.currentUser;
+
+    if (currentUser == null) {
+      return const Center(child: Text('Please log in to chat.'));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.receiverName),
+        title: Text(widget.chatPartnerName),
       ),
       body: Column(
-        children: <Widget>[
+        children: [
           Expanded(
             child: StreamBuilder<List<Message>>(
-              stream: _databaseService.getMessages(
-                  _currentUser!.uid, widget.receiverId),
+              stream: DatabaseService().getMessages(currentUser.uid, widget.chatPartnerId),
               builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final messages = snapshot.data ?? [];
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('Say hello!'));
+                }
+
+                final messages = snapshot.data!;
+
                 return ListView.builder(
-                  reverse: true,
+                  reverse: true, // Show latest messages at the bottom
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isMe = message.senderId == _currentUser!.uid;
+                    final isMe = message.senderId == currentUser.uid;
+
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
@@ -71,7 +65,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: isMe ? Colors.blue[100] : Colors.grey[300],
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text(message.message),
+                        child: Text(message.content),
                       ),
                     );
                   },
@@ -82,7 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
-              children: <Widget>[
+              children: [
                 Expanded(
                   child: TextField(
                     controller: _messageController,
@@ -94,7 +88,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  onPressed: () {
+                    if (_messageController.text.isNotEmpty) {
+                      DatabaseService().sendMessage(
+                        currentUser.uid,
+                        widget.chatPartnerId,
+                        _messageController.text,
+                      );
+                      _messageController.clear();
+                    }
+                  },
                 ),
               ],
             ),

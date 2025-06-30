@@ -16,7 +16,7 @@ class _HomeWrapperState extends State<HomeWrapper> {
 
   static final List<Widget> _widgetOptions = <Widget>[
     const SwipeScreen(), // Home/Swipe Screen
-    const MatchesScreen(), // Placeholder for Matches Screen
+    const MatchesScreen(), // Matches Screen
     const MessagesScreen(), // Messages Screen
     const ProfileScreen(), // Profile Screen
   ];

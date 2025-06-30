@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cohouse_match/screens/chat_screen.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:cohouse_match/models/user.dart';
+import 'package:cohouse_match/models/match.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
@@ -23,66 +24,84 @@ class _MessagesScreenState extends State<MessagesScreen> {
       return const Center(child: Text('Please log in to view messages.'));
     }
 
-    // This is a simplified approach. In a real app, you'd fetch actual matches
-    // or conversations to display here.
-    // For now, let's just show a list of all other users as potential chat partners.
-    return StreamBuilder<List<UserData>>(
-      stream: _databaseService.userCollection.snapshots().map((snapshot) {
-        return snapshot.docs.map((doc) {
-          return UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-        }).where((user) => user.uid != currentUser.uid).toList();
-      }),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}');
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Messages'),
+      ),
+      body: StreamBuilder<List<Match>>(
+        stream: _databaseService.getMatches(currentUser.uid),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-        final users = snapshot.data ?? [];
+          final matches = snapshot.data ?? [];
 
-        if (users.isEmpty) {
-          return const Center(child: Text('No users to chat with yet.'));
-        }
+          if (matches.isEmpty) {
+            return const Center(child: Text('No matches yet. Swipe right to find a match!'));
+          }
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Messages'),
-          ),
-          body: ListView.builder(
-            itemCount: users.length,
+          return ListView.builder(
+            itemCount: matches.length,
             itemBuilder: (context, index) {
-              final user = users[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: user.photoUrl != null
-                        ? NetworkImage(user.photoUrl!) as ImageProvider<Object>?
-                        : null,
-                    child: user.photoUrl == null
-                        ? const Icon(Icons.person) : null,
-                  ),
-                  title: Text(user.name ?? 'No Name'),
-                  subtitle: Text(user.email),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatScreen(
-                          receiverId: user.uid,
-                          receiverName: user.name ?? user.email,
-                        ),
-                      ),
+              final match = matches[index];
+              final chatPartnerId = match.user1Id == currentUser.uid ? match.user2Id : match.user1Id;
+
+              return FutureBuilder<UserData?>(
+                future: _databaseService.userDataFromUid(chatPartnerId).first,
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return const ListTile(
+                      title: Text('Loading...'),
                     );
-                  },
-                ),
+                  }
+                  if (userSnapshot.hasError) {
+                    return ListTile(
+                      title: Text('Error loading user: ${userSnapshot.error}'),
+                    );
+                  }
+                  if (!userSnapshot.hasData) {
+                    return const ListTile(
+                      title: Text('User not found'),
+                    );
+                  }
+
+                  final chatPartner = userSnapshot.data!;
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: chatPartner.photoUrl != null
+                            ? NetworkImage(chatPartner.photoUrl!) as ImageProvider<Object>?
+                            : null,
+                        child: chatPartner.photoUrl == null
+                            ? const Icon(Icons.person) : null,
+                      ),
+                      title: Text(chatPartner.name ?? 'No Name'),
+                      subtitle: Text(chatPartner.email),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              chatPartnerId: chatPartner.uid,
+                              chatPartnerName: chatPartner.name ?? chatPartner.email,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               );
             },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
