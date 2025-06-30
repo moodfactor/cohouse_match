@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "242037756353",
+    "project_id": "cohousematch",
+    "storage_bucket": "cohousematch.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:242037756353:android:3f649e278a23f44b971f40",
+        "android_client_info": {
+          "package_name": "com.example.cohouse_match"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAy7JOZjhPx_a4SfL1fDO5LfMNiBJ2RLc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
