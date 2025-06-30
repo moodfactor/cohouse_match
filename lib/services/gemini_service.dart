@@ -9,7 +9,7 @@ class GeminiService {
   // It's best practice to load the API key from a secure location
   // (like environment variables) rather than hardcoding it in your app.
   GeminiService({required this.apiKey}) {
-    _model = GenerativeModel(model: 'gemini-pro', apiKey: apiKey);
+    _model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
   }
 
   Future<Map<String, dynamic>?> getMatchScore(
@@ -60,6 +60,20 @@ Example:
       final Map<String, dynamic> result = json.decode(jsonString);
 
       if (result.containsKey('score') && result.containsKey('explanation')) {
+        // Attempt to parse the explanation string as a nested JSON
+        try {
+          final nestedExplanation = json.decode(result['explanation']);
+          if (nestedExplanation is Map<String, dynamic> && nestedExplanation.containsKey('summary')) {
+            result['explanation'] = nestedExplanation['summary'];
+          } else if (nestedExplanation is Map<String, dynamic> && nestedExplanation.containsKey('Overall Assessment')) {
+            result['explanation'] = nestedExplanation['Overall Assessment'];
+          } else {
+            print('Nested explanation JSON does not contain "summary" or "Overall Assessment" key.');
+          }
+        } catch (e) {
+          print('Error parsing nested explanation JSON: $e');
+          // Keep the original explanation string if parsing fails
+        }
         return result;
       } else {
         print('Invalid JSON response from Gemini: $text');

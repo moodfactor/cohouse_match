@@ -22,7 +22,7 @@ class _MultiSelectChipState extends State<MultiSelectChip> {
     }
   }
 
-  _buildChoiceList() {
+  List<Widget> _buildChoiceList() {
     List<Widget> choices = [];
     for (var item in widget.reportList) {
       choices.add(Container(

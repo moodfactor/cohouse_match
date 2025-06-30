@@ -39,6 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+
   Future<String?> _uploadImage(String uid) async {
     if (_imageFile == null) return null;
 
@@ -60,10 +61,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Center(child: CircularProgressIndicator()); // Or a login prompt
     }
 
-    return StreamBuilder<UserData>(
+    return StreamBuilder<UserData?>(
       stream: DatabaseService(uid: user.uid).userData,
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        } else if (snapshot.hasData && snapshot.data != null) {
           UserData? userData = snapshot.data;
           _name = userData?.name;
           _bio = userData?.bio;
@@ -75,144 +80,149 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _gender = userData?.gender;
           _age = userData?.age;
 
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Edit Profile'),
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: <Widget>[
-                    Center(
-                      child: GestureDetector(
-                        onTap: _pickImage,
-                        child: CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: _imageFile != null
-                              ? FileImage(_imageFile!)
-                              : (_photoUrl != null ? NetworkImage(_photoUrl!) : null) as ImageProvider<Object>?,
-                          child: _imageFile == null && _photoUrl == null
-                              ? Icon(Icons.camera_alt, size: 40, color: Colors.grey[600])
-                              : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20.0),
-                    TextFormField(
-                      initialValue: _name,
-                      decoration: const InputDecoration(labelText: 'Name'),
-                      validator: (val) =>
-                          val!.isEmpty ? 'Please enter a name' : null,
-                      onChanged: (val) => setState(() => _name = val),
-                    ),
-                    const SizedBox(height: 20.0),
-                    TextFormField(
-                      initialValue: _bio,
-                      decoration: const InputDecoration(labelText: 'Bio'),
-                      maxLines: 3,
-                      onChanged: (val) => setState(() => _bio = val),
-                    ),
-                    const SizedBox(height: 20.0),
-                    TextFormField(
-                      initialValue: _budget?.toString(),
-                      decoration: const InputDecoration(labelText: 'Budget'),
-                      keyboardType: TextInputType.number,
-                      validator: (val) =>
-                          val!.isEmpty ? 'Please enter a budget' : null,
-                      onChanged: (val) => setState(() => _budget = double.tryParse(val)),
-                    ),
-                    const SizedBox(height: 20.0),
-                    TextFormField(
-                      initialValue: _location,
-                      decoration: const InputDecoration(labelText: 'Location'),
-                      validator: (val) =>
-                          val!.isEmpty ? 'Please enter a location' : null,
-                      onChanged: (val) => setState(() => _location = val),
-                    ),
-                    const SizedBox(height: 20.0),
-                    DropdownButtonFormField<String>(
-                      value: _gender,
-                      decoration: const InputDecoration(labelText: 'Gender'),
-                      items: <String>['Male', 'Female', 'Other']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _gender = newValue;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20.0),
-                    TextFormField(
-                      initialValue: _age?.toString(),
-                      decoration: const InputDecoration(labelText: 'Age'),
-                      keyboardType: TextInputType.number,
-                      validator: (val) =>
-                          val!.isEmpty ? 'Please enter your age' : null,
-                      onChanged: (val) => setState(() => _age = int.tryParse(val)),
-                    ),
-                    const SizedBox(height: 20.0),
-                    const Text('Personality Tags:'),
-                    MultiSelectChip(
-                      ['Introvert', 'Extrovert', 'Thinker', 'Feeler', 'Organized', 'Spontaneous'],
-                      initialSelection: _personalityTags,
-                      onSelectionChanged: (selectedList) {
-                        setState(() {
-                          _personalityTags = selectedList;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20.0),
-                    const Text('Lifestyle Details:'),
-                    MultiSelectChip(
-                      ['Pet-friendly', 'Night Owl', 'Early Bird', 'Vegetarian', 'Vegan', 'Remote Worker', 'Student'],
-                      initialSelection: _lifestyleDetails,
-                      onSelectionChanged: (selectedList) {
-                        setState(() {
-                          _lifestyleDetails = selectedList;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20.0),
-                    ElevatedButton(
-                      child: const Text('Update Profile'),
-                      onPressed: () async {
-                        if (_formKey.currentState!.validate()) {
-                          String? newPhotoUrl = await _uploadImage(user.uid);
-                          await DatabaseService(uid: user.uid).updateUserData(
-                            user.email!,
-                            _name,
-                            _bio,
-                            newPhotoUrl ?? _photoUrl,
-                            _personalityTags,
-                            _lifestyleDetails,
-                            _budget,
-                            _location,
-                            _gender,
-                            _age,
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Profile Updated')),
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
+          return _buildProfileForm(user.uid, user);
         } else {
-          return const Center(child: CircularProgressIndicator());
+          // If snapshot has no data (user document doesn't exist), show empty form
+          return _buildProfileForm(user.uid, user);
         }
       },
+    );
+  }
+
+  Widget _buildProfileForm(String uid, final User user) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: <Widget>[
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: _imageFile != null
+                        ? FileImage(_imageFile!)
+                        : (_photoUrl != null ? NetworkImage(_photoUrl!) : null) as ImageProvider<Object>?,
+                    child: _imageFile == null && _photoUrl == null
+                        ? Icon(Icons.camera_alt, size: 40, color: Colors.grey[600])
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20.0),
+              TextFormField(
+                initialValue: _name,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: (val) =>
+                    val!.isEmpty ? 'Please enter a name' : null,
+                onChanged: (val) => setState(() => _name = val),
+              ),
+              const SizedBox(height: 20.0),
+              TextFormField(
+                initialValue: _bio,
+                decoration: const InputDecoration(labelText: 'Bio'),
+                maxLines: 3,
+                onChanged: (val) => setState(() => _bio = val),
+              ),
+              const SizedBox(height: 20.0),
+              TextFormField(
+                initialValue: _budget?.toString(),
+                decoration: const InputDecoration(labelText: 'Budget'),
+                keyboardType: TextInputType.number,
+                validator: (val) =>
+                    val!.isEmpty ? 'Please enter a budget' : null,
+                onChanged: (val) => setState(() => _budget = double.tryParse(val)),
+              ),
+              const SizedBox(height: 20.0),
+              TextFormField(
+                initialValue: _location,
+                decoration: const InputDecoration(labelText: 'Location'),
+                validator: (val) =>
+                    val!.isEmpty ? 'Please enter a location' : null,
+                onChanged: (val) => setState(() => _location = val),
+              ),
+              const SizedBox(height: 20.0),
+              DropdownButtonFormField<String>(
+                value: _gender,
+                decoration: const InputDecoration(labelText: 'Gender'),
+                items: <String>['Male', 'Female', 'Other']
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _gender = newValue;
+                  });
+                },
+              ),
+              const SizedBox(height: 20.0),
+              TextFormField(
+                initialValue: _age?.toString(),
+                decoration: const InputDecoration(labelText: 'Age'),
+                keyboardType: TextInputType.number,
+                validator: (val) =>
+                    val!.isEmpty ? 'Please enter your age' : null,
+                onChanged: (val) => setState(() => _age = int.tryParse(val)),
+              ),
+              const SizedBox(height: 20.0),
+              const Text('Personality Tags:'),
+              MultiSelectChip(
+                ['Introvert', 'Extrovert', 'Thinker', 'Feeler', 'Organized', 'Spontaneous'],
+                initialSelection: _personalityTags,
+                onSelectionChanged: (selectedList) {
+                  setState(() {
+                    _personalityTags = selectedList;
+                  });
+                },
+              ),
+              const SizedBox(height: 20.0),
+              const Text('Lifestyle Details:'),
+              MultiSelectChip(
+                ['Pet-friendly', 'Night Owl', 'Early Bird', 'Vegetarian', 'Vegan', 'Remote Worker', 'Student'],
+                initialSelection: _lifestyleDetails,
+                onSelectionChanged: (selectedList) {
+                  setState(() {
+                    _lifestyleDetails = selectedList;
+                  });
+                },
+              ),
+              const SizedBox(height: 20.0),
+              ElevatedButton(
+                child: const Text('Update Profile'),
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    String? newPhotoUrl = await _uploadImage(uid);
+                    await DatabaseService(uid: uid).updateUserData(
+                      user.email!,
+                      _name,
+                      _bio,
+                      newPhotoUrl ?? _photoUrl,
+                      _personalityTags,
+                      _lifestyleDetails,
+                      _budget,
+                      _location,
+                      _gender,
+                      _age,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile Updated')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

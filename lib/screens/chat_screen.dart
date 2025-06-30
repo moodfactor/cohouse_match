@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cohouse_match/models/message.dart';
-import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
 
 class ChatScreen extends StatefulWidget {

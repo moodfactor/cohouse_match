@@ -84,7 +84,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                               );
                             },
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   ),

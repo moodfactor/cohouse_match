@@ -136,14 +136,16 @@ class _SwipeScreenState extends State<SwipeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Match Result'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Score: ${matchResult?['score'] ?? 'N/A'}'),
-              const SizedBox(height: 10),
-              Text(matchResult?['explanation'] ?? 'Could not get match explanation.'),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Score: ${matchResult?['score'] ?? 'N/A'}'),
+                const SizedBox(height: 10),
+                Text(matchResult?['explanation'] ?? 'Could not get match explanation.'),
+              ],
+            ),
           ),
           actions: <Widget>[
             TextButton(
@@ -203,7 +205,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                       });
                     },
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
@@ -413,16 +415,19 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     child: Container(
                       color: Colors.grey[300],
                       child: Center(
-                        child: currentUserData.photoUrl != null && currentUserData.photoUrl!.isNotEmpty
+                        child: (currentUserData.photoUrl != null &&
+                                currentUserData.photoUrl!.isNotEmpty &&
+                                currentUserData.photoUrl! != 'https://example.com/bob.jpg')
                             ? Image.network(
                                 currentUserData.photoUrl!,
                                 fit: BoxFit.cover,
                                 width: double.infinity,
                                 height: double.infinity,
                               )
-                            : Text(
-                                currentUserData.name ?? 'No Name',
-                                style: const TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
+                            : Icon(
+                                Icons.person, // Placeholder icon
+                                size: 100.0,
+                                color: Colors.grey,
                               ),
                       ),
                     ),

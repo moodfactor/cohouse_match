@@ -42,7 +42,10 @@ class DatabaseService {
   }
 
   // user data from snapshots
-  UserData _userDataFromSnapshot(DocumentSnapshot snapshot) {
+  UserData? _userDataFromSnapshot(DocumentSnapshot snapshot) {
+    if (!snapshot.exists || snapshot.data() == null) {
+      return null;
+    }
     Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
     return UserData(
       uid: uid!,
@@ -62,28 +65,15 @@ class DatabaseService {
   }
 
   // get user doc stream for the current uid
-  Stream<UserData> get userData {
+  Stream<UserData?> get userData {
     return userCollection.doc(uid).snapshots().map(_userDataFromSnapshot);
   }
 
   // get user doc stream for a specific uid
-  Stream<UserData> userDataFromUid(String targetUid) {
+  Stream<UserData?> userDataFromUid(String targetUid) {
     return userCollection.doc(targetUid).snapshots().map((snapshot) {
       if (!snapshot.exists || snapshot.data() == null) {
-        // Return a UserData object with default values if the document doesn't exist
-        return UserData(
-          uid: targetUid,
-          email: '',
-          name: null,
-          bio: null,
-          photoUrl: null,
-          personalityTags: null,
-          lifestyleDetails: null,
-          budget: null,
-          location: null,
-          gender: null,
-          age: null,
-        );
+        return null;
       }
       Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
       return UserData(

@@ -4,7 +4,6 @@ import 'package:cohouse_match/screens/profile_screen.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:flutter/material.dart';
-import 'package:cohouse_match/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:provider/provider.dart';
