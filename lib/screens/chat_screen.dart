@@ -29,7 +29,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Cache for member data to prevent fetching on every message
-  Map<String, UserData> _memberData = {};
+  final Map<String, UserData> _memberData = {};
   bool _isLoadingMembers = true;
 
   @override

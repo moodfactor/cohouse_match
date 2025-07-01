@@ -1,6 +1,5 @@
 import 'package:cohouse_match/screens/view_profile_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cohouse_match/models/match.dart';
 import 'package:cohouse_match/models/user.dart';
