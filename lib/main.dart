@@ -14,6 +14,10 @@ void main() async {
   runApp(const MyApp());
 }
 
+      
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -23,6 +27,7 @@ class MyApp extends StatelessWidget {
       value: AuthService().user,
       initialData: null,
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'CohouseMatch',
         theme: ThemeData(
           primarySwatch: Colors.blue,

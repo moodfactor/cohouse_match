@@ -1,10 +1,16 @@
 // lib/services/notification_service.dart
+import 'package:cohouse_match/screens/matches_screen.dart';
+import 'package:cohouse_match/screens/messages_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cohouse_match/main.dart';
+import 'package:flutter/material.dart' show MaterialPageRoute; 
 
 class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+
+  
 
   Future<void> initNotifications() async {
     // Request permission from the user (will prompt on iOS)
@@ -18,8 +24,42 @@ class NotificationService {
     final token = await _fcm.getToken();
     print("FCM Token: $token"); // For testing
     
-    // TODO: Save the token to the current user's document in Firestore
+    // Handle notifications when the app is in the foreground
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification}');
+        // Optional: Show a local notification using flutter_local_notifications
+        // or an in-app banner.
+      }
+    });
+
+    // Handle notifications when the app is in the background or terminated
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('A new onMessageOpenedApp event was published!');
+      // TODO: Handle navigation from notification tap
+      _handleNotificationNavigation(message.data);
+    });
   }
+
+void _handleNotificationNavigation(Map<String, dynamic> data) {
+  final chatRoomId = data['chatRoomId'];
+  final currentState = navigatorKey.currentState;
+
+  if (currentState == null) return;
+
+  if (chatRoomId != null) {
+    // TODO: This part is complex because you need the chatTitle and memberIds.
+    // A simpler first step might be to just navigate to the MessagesScreen list.
+    // A full implementation requires fetching match data before navigating.
+    currentState.push(MaterialPageRoute(builder: (_) => MessagesScreen()));
+  } else {
+    // This is a match notification. Navigate to the MatchesScreen.
+    currentState.push(MaterialPageRoute(builder: (_) => MatchesScreen()));
+  }
+}
 
   /// Saves the FCM device token to the current user's document.
   Future<void> saveTokenToDatabase(String userId) async {
@@ -36,4 +76,7 @@ class NotificationService {
       });
     }
   }
+
+  
+
 }

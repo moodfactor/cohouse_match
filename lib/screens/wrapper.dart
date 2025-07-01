@@ -5,7 +5,7 @@ import 'package:cohouse_match/services/database_service.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:cohouse_match/services/notification_service.dart';
 import 'package:provider/provider.dart';
 
 class Wrapper extends StatelessWidget {
@@ -18,11 +18,21 @@ class Wrapper extends StatelessWidget {
     if (user == null) {
       return const Authenticate();
     } else {
+      // --- ADD THIS LOGIC ---
+      // When user is logged in, initialize notifications and save the token.
+      // This will run every time the Wrapper rebuilds with a logged-in user.
+      // The arrayUnion in saveTokenToDatabase prevents duplicates.
+      final notificationService = NotificationService();
+      notificationService.initNotifications();
+      notificationService.saveTokenToDatabase(user.uid);
+      // --- END OF ADDED LOGIC --- 
       return StreamBuilder<UserData?>(
         stream: DatabaseService().userDataFromUid(user.uid),
         builder: (context, userSnapshot) {
           if (userSnapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           if (userSnapshot.hasData && userSnapshot.data != null) {
             final userData = userSnapshot.data!;
