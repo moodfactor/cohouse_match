@@ -134,14 +134,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Validate parsed values
       if (age == null || age <= 0) {
         _showErrorSnackbar('Please enter a valid age');
+        setState(() => _isLoading = false); // Stop loading on validation error
         return;
       }
       if (budget == null || budget <= 0) {
         _showErrorSnackbar('Please enter a valid budget');
+        setState(() => _isLoading = false); // Stop loading on validation error
         return;
       }
       if (_gender == null) {
         _showErrorSnackbar('Please select a gender');
+        setState(() => _isLoading = false); // Stop loading on validation error
         return;
       }
 
@@ -165,13 +168,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         age,
       );
 
-      // Update local state
-      if (newPhotoUrl != null) {
-        setState(() {
-          _photoUrl = newPhotoUrl;
-          _imageFile = null;
-        });
-      }
+      // After a successful update, reset the initialization flag.
+      // This will cause the StreamBuilder to re-populate the form
+      // with the fresh data from Firestore on the next stream event.
+      _isInitialized = false;
 
       _showSuccessSnackbar('Profile updated successfully!');
     } catch (e) {
