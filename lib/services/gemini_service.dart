@@ -14,73 +14,77 @@ class GeminiService {
 
   Future<Map<String, dynamic>?> getMatchScore(
       UserData currentUser, UserData potentialMatch) async {
+    // Updated prompt for clarity and to enforce JSON output.
     final prompt = '''
-Given the following two user profiles, provide a compatibility score from 0 to 100 and a detailed explanation in JSON format. The explanation should highlight key compatibility factors based on lifestyle, personality, budget, and location.
+Analyze the compatibility between these two user profiles and provide a response in JSON format.
 
-User 1 (Current User):
-Name: ${currentUser.name ?? 'Not specified'}
-Bio: ${currentUser.bio ?? 'Not specified'}
-Personality Tags: ${currentUser.personalityTags?.join(', ') ?? 'None'}
-Lifestyle Details: ${currentUser.lifestyleDetails?.join(', ') ?? 'None'}
-Budget: ${currentUser.budget?.toString() ?? 'Not specified'}
-Location: ${currentUser.location ?? 'Not specified'}
-Gender: ${currentUser.gender ?? 'Not specified'}
-Age: ${currentUser.age?.toString() ?? 'Not specified'}
+**User 1 (Current User):**
+- **Name:** ${currentUser.name ?? 'N/A'}
+- **Bio:** ${currentUser.bio ?? 'N/A'}
+- **Personality Tags:** ${currentUser.personalityTags?.join(', ') ?? 'N/A'}
+- **Lifestyle Details:** ${currentUser.lifestyleDetails?.join(', ') ?? 'N/A'}
+- **Budget:** ${currentUser.budget?.toString() ?? 'N/A'}
+- **Location:** ${currentUser.location ?? 'N/A'}
+- **Gender:** ${currentUser.gender ?? 'N/A'}
+- **Age:** ${currentUser.age?.toString() ?? 'N/A'}
 
-User 2 (Potential Match):
-Name: ${potentialMatch.name ?? 'Not specified'}
-Bio: ${potentialMatch.bio ?? 'Not specified'}
-Personality Tags: ${potentialMatch.personalityTags?.join(', ') ?? 'None'}
-Lifestyle Details: ${potentialMatch.lifestyleDetails?.join(', ') ?? 'None'}
-Budget: ${potentialMatch.budget?.toString() ?? 'Not specified'}
-Location: ${potentialMatch.location ?? 'Not specified'}
-Gender: ${potentialMatch.gender ?? 'Not specified'}
-Age: ${potentialMatch.age?.toString() ?? 'Not specified'}
+**User 2 (Potential Match):**
+- **Name:** ${potentialMatch.name ?? 'N/A'}
+- **Bio:** ${potentialMatch.bio ?? 'N/A'}
+- **Personality Tags:** ${potentialMatch.personalityTags?.join(', ') ?? 'N/A'}
+- **Lifestyle Details:** ${potentialMatch.lifestyleDetails?.join(', ') ?? 'N/A'}
+- **Budget:** ${potentialMatch.budget?.toString() ?? 'N/A'}
+- **Location:** ${potentialMatch.location ?? 'N/A'}
+- **Gender:** ${potentialMatch.gender ?? 'N/A'}
+- **Age:** ${potentialMatch.age?.toString() ?? 'N/A'}
 
-Provide the response as a JSON object with two keys: "score" (integer 0-100) and "explanation" (string).
-Example:
+**Instructions:**
+Return a single, valid JSON object with two keys:
+1.  `"score"`: An integer between 0 and 100 representing the compatibility.
+2.  `"explanation"`: A concise, single-line string (under 200 characters) that summarizes the key reasons for the score. Do not include newlines or other control characters in the explanation string.
+
+**Example Response:**
+```json
 {
   "score": 75,
-  "explanation": "Both users share similar interests in outdoor activities and have compatible budgets. However, their personality tags suggest different social preferences."
+  "explanation": "Good compatibility in lifestyle and budget, but potential differences in social energy."
 }
+```
 ''';
 
     try {
       final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
+      // Enforce JSON output from the model
+      final generationConfig = GenerationConfig(
+        responseMimeType: 'application/json',
+      );
+      final response = await _model.generateContent(
+        content,
+        generationConfig: generationConfig,
+      );
       final text = response.text;
 
       if (text == null) {
-        print('Gemini returned null response.');
+        print('Gemini returned a null response.');
         return null;
       }
 
-      // Attempt to parse the JSON response
-      final jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
-      final Map<String, dynamic> result = json.decode(jsonString);
+      // The model is now configured to return JSON, so direct parsing is safer.
+      // No need to manually find '{' and '}'
+      final Map<String, dynamic> result = json.decode(text);
 
       if (result.containsKey('score') && result.containsKey('explanation')) {
-        // Attempt to parse the explanation string as a nested JSON
-        try {
-          final nestedExplanation = json.decode(result['explanation']);
-          if (nestedExplanation is Map<String, dynamic> && nestedExplanation.containsKey('summary')) {
-            result['explanation'] = nestedExplanation['summary'];
-          } else if (nestedExplanation is Map<String, dynamic> && nestedExplanation.containsKey('Overall Assessment')) {
-            result['explanation'] = nestedExplanation['Overall Assessment'];
-          } else {
-            print('Nested explanation JSON does not contain "summary" or "Overall Assessment" key.');
-          }
-        } catch (e) {
-          print('Error parsing nested explanation JSON: $e');
-          // Keep the original explanation string if parsing fails
-        }
         return result;
       } else {
-        print('Invalid JSON response from Gemini: $text');
+        print('Invalid JSON response from Gemini. Missing keys: $text');
         return null;
       }
     } catch (e) {
       print('Error getting match score from Gemini: $e');
+      // It's helpful to see the raw response when debugging.
+      if (e is FormatException && e.source != null) {
+        print('Raw Gemini response was: ${e.source}');
+      }
       return null;
     }
   }
