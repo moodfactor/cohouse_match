@@ -159,18 +159,26 @@ class DatabaseService {
 
   // Create a match
   Future<void> createMatch(String user1Id, String user2Id, {List<String>? groupMembers}) async {
+    // Fetch user names for chat title
+    final user1Doc = await userCollection.doc(user1Id).get();
+    final user2Doc = await userCollection.doc(user2Id).get();
+    final user1Name = (user1Doc.data() as Map<String, dynamic>)['name'] ?? 'User 1';
+    final user2Name = (user2Doc.data() as Map<String, dynamic>)['name'] ?? 'User 2';
     // Ensure unique match document ID by sorting user IDs
     List<String> ids = [user1Id, user2Id];
     String matchType = 'individual';
     List<String> members = [];
+    String chatTitle = '';
 
     if (groupMembers != null && groupMembers.length > 2) {
       ids = groupMembers..sort();
       matchType = 'group';
       members = groupMembers;
+      chatTitle = 'Group Chat'; // Generic title for group chats
     } else {
       ids.sort();
       members = [user1Id, user2Id];
+      chatTitle = '$user1Name & $user2Name'; // Title for individual chats
     }
 
     String matchId = ids.join('_');
@@ -181,6 +189,7 @@ class DatabaseService {
       'timestamp': FieldValue.serverTimestamp(),
       'type': matchType,
       'members': members,
+      'chatTitle': chatTitle, // Add chatTitle here
     });
   }
 

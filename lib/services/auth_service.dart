@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cohouse_match/services/notification_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final NotificationService _notificationService = NotificationService();
 
   // Get current user
   User? getCurrentUser() {
@@ -55,6 +57,11 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
+      // Remove FCM token before signing out
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        await _notificationService.removeTokenFromDatabase(currentUser.uid);
+      }
       await _googleSignIn.signOut();
       await _auth.signOut();
     } catch (e) {

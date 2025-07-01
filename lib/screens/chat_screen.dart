@@ -28,6 +28,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final DatabaseService _db = DatabaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  String _chatTitle = '';
+  List<String> _memberIds = [];
+
   // Cache for member data to prevent fetching on every message
   final Map<String, UserData> _memberData = {};
   bool _isLoadingMembers = true;
@@ -35,7 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchMemberData();
+    _fetchChatDetails();
   }
 
   @override
@@ -45,10 +48,33 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  /// Fetches chat details (title and member IDs) from Firestore.
+  Future<void> _fetchChatDetails() async {
+    try {
+      final matchDoc = await _db.matchesCollection.doc(widget.chatRoomId).get();
+      if (matchDoc.exists) {
+        final data = matchDoc.data() as Map<String, dynamic>;
+        setState(() {
+          _chatTitle = data['chatTitle'] ?? 'Chat'; // Assuming a chatTitle field
+          _memberIds = List<String>.from(data['members'] ?? []);
+        });
+        _fetchMemberData();
+      } else {
+        print('Chat room not found: ${widget.chatRoomId}');
+        // Handle case where chat room doesn't exist, e.g., navigate back
+      }
+    } catch (e) {
+      print('Error fetching chat details: $e');
+    }
+  }
+
   /// Fetches UserData for all members in the chat and stores it in a map for quick access.
   Future<void> _fetchMemberData() async {
-    for (String uid in widget.memberIds) {
-      // .first gets the current value of the stream and completes.
+    if (_memberIds.isEmpty) {
+      setState(() => _isLoadingMembers = false);
+      return;
+    }
+    for (String uid in _memberIds) {
       final userData = await _db.userDataFromUid(uid).first;
       if (userData != null) {
         _memberData[uid] = userData;
@@ -89,12 +115,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.chatTitle),
+        title: Text(_chatTitle),
       ),
       body: Column(
         children: [
           Expanded(
-            child: _isLoadingMembers
+            child: _isLoadingMembers || _chatTitle.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : StreamBuilder<List<Message>>(
                     stream: _db.getMessages(widget.chatRoomId),
@@ -129,7 +155,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           final message = messages[index];
                           final isMe = message.senderId == currentUser.uid;
                           final sender = _memberData[message.senderId];
-                          final bool isGroupChat = widget.memberIds.length > 2;
+                          final bool isGroupChat = _memberIds.length > 2;
 
                           return _MessageBubble(
                             message: message,
