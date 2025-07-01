@@ -19,12 +19,15 @@ class DatabaseService {
 
   final String chatRoomMId = 'chatRoomId'; // Placeholder for chat room ID
 
-    // Add a review for a user
+
+  // Add a review for a user
   Future<void> addReview(String targetUserId, Review review) async {
+    // A review document is created inside the 'reviews' subcollection of the target user
     await userCollection.doc(targetUserId).collection('reviews').add(review.toMap());
   }
 
- // Get all reviews for a user
+
+  // Get all reviews for a user
   Stream<List<Review>> getReviews(String targetUserId) {
     return userCollection
         .doc(targetUserId)

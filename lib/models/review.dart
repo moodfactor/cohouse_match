@@ -1,4 +1,3 @@
-// lib/models/review.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Review {
@@ -21,11 +20,11 @@ class Review {
   factory Review.fromMap(Map<String, dynamic> data, String id) {
     return Review(
       id: id,
-      authorId: data['authorId'],
-      authorName: data['authorName'],
-      content: data['content'],
-      rating: (data['rating'] as num).toDouble(),
-      timestamp: data['timestamp'],
+      authorId: data['authorId'] ?? '',
+      authorName: data['authorName'] ?? 'Anonymous',
+      content: data['content'] ?? '',
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+      timestamp: data['timestamp'] ?? Timestamp.now(),
     );
   }
 
