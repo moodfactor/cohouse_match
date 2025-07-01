@@ -1,12 +1,14 @@
-import 'package:cohouse_match/services/api_keys.dart';
-import 'package:cohouse_match/widgets/multi_select_chip.dart';
+// lib/screens/swipe_screen.dart
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:cohouse_match/services/gemini_service.dart';
+import 'package:cohouse_match/services/api_keys.dart'; // Make sure you have this file
+import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:cohouse_match/widgets/multi_select_chip.dart'; // Keep for filter dialog
 
 class SwipeScreen extends StatefulWidget {
   const SwipeScreen({super.key});
@@ -17,10 +19,11 @@ class SwipeScreen extends StatefulWidget {
 
 class _SwipeScreenState extends State<SwipeScreen> {
   List<UserData> _usersToSwipe = [];
-  int _currentIndex = 0;
+  final CardSwiperController _swiperController = CardSwiperController();
   final GeminiService _geminiService = GeminiService(apiKey: geminiApiKey);
   UserData? _currentLoggedInUser;
   bool _isLoading = true;
+  int _currentIndex = 0;
 
   // Filter parameters
   double? _minBudget;
@@ -49,15 +52,19 @@ class _SwipeScreenState extends State<SwipeScreen> {
         return;
       }
 
-      _currentLoggedInUser =
-          await DatabaseService(uid: currentUser.uid).userData.first;
+      _currentLoggedInUser = await DatabaseService(
+        uid: currentUser.uid,
+      ).userData.first;
 
-      QuerySnapshot snapshot =
-          await FirebaseFirestore.instance.collection('users').get();
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .get();
 
       List<UserData> allUsers = snapshot.docs
-          .map((doc) =>
-              UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) =>
+                UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id),
+          )
           .toList();
 
       // Client-side filtering
@@ -65,10 +72,14 @@ class _SwipeScreenState extends State<SwipeScreen> {
         if (user.uid == currentUser.uid) {
           return false;
         }
-        if (_minBudget != null && user.budget != null && user.budget! < _minBudget!) {
+        if (_minBudget != null &&
+            user.budget != null &&
+            user.budget! < _minBudget!) {
           return false;
         }
-        if (_maxBudget != null && user.budget != null && user.budget! > _maxBudget!) {
+        if (_maxBudget != null &&
+            user.budget != null &&
+            user.budget! > _maxBudget!) {
           return false;
         }
         if (_locationFilter != null &&
@@ -77,13 +88,15 @@ class _SwipeScreenState extends State<SwipeScreen> {
           return false;
         }
         if (_selectedLifestyleDetails.isNotEmpty &&
-            !_selectedLifestyleDetails
-                .any((item) => user.lifestyleDetails?.contains(item) ?? false)) {
+            !_selectedLifestyleDetails.any(
+              (item) => user.lifestyleDetails?.contains(item) ?? false,
+            )) {
           return false;
         }
         if (_selectedPersonalityTags.isNotEmpty &&
-            !_selectedPersonalityTags
-                .any((item) => user.personalityTags?.contains(item) ?? false)) {
+            !_selectedPersonalityTags.any(
+              (item) => user.personalityTags?.contains(item) ?? false,
+            )) {
           return false;
         }
         if (_selectedGender != null && user.gender != _selectedGender) {
@@ -112,63 +125,117 @@ class _SwipeScreenState extends State<SwipeScreen> {
     }
   }
 
-  void _onSwipeLeft() {
-    // Handle pass
+  Future<bool> _onSwipe(
+    int previousIndex,
+    int? currentIndex,
+    CardSwiperDirection direction,
+  ) async {
+    final swipedUser = _usersToSwipe[previousIndex];
+
+    if (direction == CardSwiperDirection.right) {
+      // User swiped right (like)
+      await _handleMatch(swipedUser);
+    } else {
+      // User swiped left, up, or down (pass)
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Passed on ${swipedUser.name}')));
+      }
+    }
+
+    // Move to next card
     _nextUser();
+
+    // This callback must return true to move to the next card
+    return true;
   }
 
-  void _onSwipeRight() async {
+  Future<void> _handleMatch(UserData swipedUser) async {
     final currentUser = Provider.of<User?>(context, listen: false);
     if (currentUser == null || _currentLoggedInUser == null) return;
 
-    final swipedUser = _usersToSwipe[_currentIndex];
+    // Show a loading indicator while processing match
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Matching with ${swipedUser.name}...')),
+      );
+    }
 
-    // Create a match
-    await DatabaseService().createMatch(currentUser.uid, swipedUser.uid);
+    try {
+      // Create a match in Firestore
+      await DatabaseService().createMatch(currentUser.uid, swipedUser.uid);
 
-    // Get match score from Gemini
-    final matchResult =
-        await _geminiService.getMatchScore(_currentLoggedInUser!, swipedUser);
+      // Get match score from Gemini
+      final matchResult = await _geminiService.getMatchScore(
+        _currentLoggedInUser!,
+        swipedUser,
+      );
 
-    // Show match score and explanation in an AlertDialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Match Result'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Score: ${matchResult?['score'] ?? 'N/A'}'),
-                const SizedBox(height: 10),
-                Text(matchResult?['explanation'] ?? 'Could not get match explanation.'),
+      // Show match score and explanation in an AlertDialog
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('You Matched with ${swipedUser.name}!'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Gemini's Compatibility Analysis:",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    Text('Score: ${matchResult?['score'] ?? 'N/A'} / 100'),
+                    const SizedBox(height: 10),
+                    Text(
+                      matchResult?['explanation'] ??
+                          'Could not get match explanation.',
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Awesome!'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
               ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+            );
+          },
         );
-      },
-    );
-
-    _nextUser();
+      }
+    } catch (e) {
+      print('Error processing match: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error processing match: $e')));
+      }
+    }
   }
 
   void _nextUser() {
     setState(() {
+      if (_usersToSwipe.isEmpty) return;
+
       if (_currentIndex < _usersToSwipe.length - 1) {
         _currentIndex++;
       } else {
-        // No more users to swipe, maybe show a message or load more
-        print('No more users to swipe.');
+        // No more users to swipe, show message and reload
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No more users to swipe. Adjust your filters or try again later.',
+              ),
+            ),
+          );
+        }
+        _loadUsers(); // Try to load more users
       }
     });
   }
@@ -215,16 +282,28 @@ class _SwipeScreenState extends State<SwipeScreen> {
               onPressed: () async {
                 if (selectedUsers.length < 2) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Select at least two members for a group match.')),
+                    const SnackBar(
+                      content: Text(
+                        'Select at least two members for a group match.',
+                      ),
+                    ),
                   );
                   return;
                 }
 
-                List<String> groupMembersUids = selectedUsers.map((user) => user.uid).toList();
-                groupMembersUids.add(currentUser.uid); // Add current user to the group
+                List<String> groupMembersUids = selectedUsers
+                    .map((user) => user.uid)
+                    .toList();
+                groupMembersUids.add(
+                  currentUser.uid,
+                ); // Add current user to the group
 
                 // Create a group match
-                await DatabaseService().createMatch(currentUser.uid, selectedUsers[0].uid, groupMembers: groupMembersUids);
+                await DatabaseService().createMatch(
+                  currentUser.uid,
+                  selectedUsers[0].uid,
+                  groupMembers: groupMembersUids,
+                );
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Group Match Created!')),
@@ -279,11 +358,12 @@ class _SwipeScreenState extends State<SwipeScreen> {
                   decoration: const InputDecoration(labelText: 'Gender'),
                   items: <String>['Male', 'Female', 'Other']
                       .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      })
+                      .toList(),
                   onChanged: (String? newValue) {
                     setState(() {
                       _selectedGender = newValue;
@@ -315,7 +395,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     'Vegetarian',
                     'Vegan',
                     'Remote Worker',
-                    'Student'
+                    'Student',
                   ],
                   initialSelection: _selectedLifestyleDetails,
                   onSelectionChanged: (selectedList) {
@@ -331,7 +411,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     'Thinker',
                     'Feeler',
                     'Organized',
-                    'Spontaneous'
+                    'Spontaneous',
                   ],
                   initialSelection: _selectedPersonalityTags,
                   onSelectionChanged: (selectedList) {
@@ -363,29 +443,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_usersToSwipe.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('CohouseMatch'),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.filter_list),
-              onPressed: _showFilterDialog,
-            ),
-          ],
-        ),
-        body: const Center(
-          child: Text('No users found matching your criteria.'),
-        ),
-      );
-    }
-
-    final UserData currentUserData = _usersToSwipe[_currentIndex];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('CohouseMatch'),
@@ -400,89 +457,188 @@ class _SwipeScreenState extends State<SwipeScreen> {
           ),
         ],
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Card(
-            margin: const EdgeInsets.all(20.0),
-            elevation: 5.0,
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.6,
-              width: MediaQuery.of(context).size.width * 0.8,
-              child: Column(
-                children: <Widget>[
-                  Expanded(
-                    child: Container(
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: (currentUserData.photoUrl != null &&
-                                currentUserData.photoUrl!.isNotEmpty &&
-                                currentUserData.photoUrl! != 'https://example.com/bob.jpg')
-                            ? Image.network(
-                                currentUserData.photoUrl!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              )
-                            : Icon(
-                                Icons.person, // Placeholder icon
-                                size: 100.0,
-                                color: Colors.grey,
-                              ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _usersToSwipe.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Text(
+                  'No users found matching your criteria. Try adjusting your filters!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: CardSwiper(
+                    controller: _swiperController,
+                    cardsCount: _usersToSwipe.length,
+                    onSwipe: _onSwipe,
+                    padding: const EdgeInsets.all(24.0),
+                    cardBuilder:
+                        (context, index, percentThresholdX, percentThresholdY) {
+                          final user = _usersToSwipe[index];
+                          return _buildUserCard(user);
+                        },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 40.0, top: 20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      FloatingActionButton(
+                        onPressed: () {
+                          // Simulate left swipe
+                          _onSwipe(
+                            _currentIndex,
+                            _currentIndex + 1,
+                            CardSwiperDirection.left,
+                          );
+                        },
+                        backgroundColor: Colors.white,
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.red,
+                          size: 30,
+                        ),
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          currentUserData.name ?? 'No Name',
-                          style: const TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
+                      FloatingActionButton(
+                        onPressed: () {
+                          // Simulate right swipe
+                          _onSwipe(
+                            _currentIndex,
+                            _currentIndex + 1,
+                            CardSwiperDirection.right,
+                          );
+                        },
+                        backgroundColor: Colors.white,
+                        child: const Icon(
+                          Icons.favorite,
+                          color: Colors.green,
+                          size: 30,
                         ),
-                        const SizedBox(height: 8.0),
-                        Text(
-                          currentUserData.bio ?? 'No bio available.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16.0),
-                        ),
-                        const SizedBox(height: 8.0),
-                        if (currentUserData.location != null && currentUserData.location!.isNotEmpty)
-                          Text('Location: ${currentUserData.location}'),
-                        if (currentUserData.budget != null)
-                          Text('Budget: \${currentUserData.budget?.toStringAsFixed(0)}'),
-                        if (currentUserData.personalityTags != null && currentUserData.personalityTags!.isNotEmpty)
-                          Text('Personality: ${currentUserData.personalityTags!.join(', ')}'),
-                        if (currentUserData.lifestyleDetails != null && currentUserData.lifestyleDetails!.isNotEmpty)
-                          Text('Lifestyle: ${currentUserData.lifestyleDetails!.join(', ')}'),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildUserCard(UserData userData) {
+    // Handle potential null values
+    final name = userData.name ?? 'Unknown';
+    final age = userData.age?.toString() ?? '';
+    final bio = userData.bio;
+    final location = userData.location;
+    final budget = userData.budget;
+
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.hardEdge, // This is important to contain the image
+      child: Stack(
+        children: [
+          // Background Image
+          if (userData.photoUrl != null && userData.photoUrl!.isNotEmpty)
+            Positioned.fill(
+              child: Image.network(
+                userData.photoUrl!,
+                fit: BoxFit.cover,
+                // Loading and error builders for a better UX
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator());
+                },
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.person, size: 150, color: Colors.grey),
+              ),
+            )
+          else
+            const Center(
+              child: Icon(Icons.person, size: 150, color: Colors.grey),
+            ),
+
+          // Gradient overlay for text readability
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.6, 1.0],
+                ),
               ),
             ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: <Widget>[
-              FloatingActionButton(
-                onPressed: _onSwipeLeft,
-                backgroundColor: Colors.red,
-                child: const Icon(Icons.close),
-              ),
-              FloatingActionButton(
-                onPressed: _onSwipeRight,
-                backgroundColor: Colors.green,
-                child: const Icon(Icons.check),
-              ),
-            ],
+
+          // User Info
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$name, $age',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (bio != null && bio.isNotEmpty)
+                  Text(
+                    bio,
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6.0,
+                  runSpacing: 6.0,
+                  children: [
+                    if (location != null)
+                      _buildInfoChip(Icons.location_on, location),
+                    if (budget != null)
+                      _buildInfoChip(
+                        Icons.attach_money,
+                        '\$${budget.toStringAsFixed(0)}/mo',
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildInfoChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 16),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(color: Colors.white)),
+        ],
+      ),
+    );
+  }
 }
-
-
-  

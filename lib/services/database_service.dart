@@ -3,6 +3,7 @@ import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/match.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:cohouse_match/models/review.dart';
 
 class DatabaseService {
   final String? uid;
@@ -15,6 +16,25 @@ class DatabaseService {
       FirebaseFirestore.instance.collection('messages');
   final CollectionReference matchesCollection =
       FirebaseFirestore.instance.collection('matches');
+
+  final String chatRoomMId = 'chatRoomId'; // Placeholder for chat room ID
+
+    // Add a review for a user
+  Future<void> addReview(String targetUserId, Review review) async {
+    await userCollection.doc(targetUserId).collection('reviews').add(review.toMap());
+  }
+
+ // Get all reviews for a user
+  Stream<List<Review>> getReviews(String targetUserId) {
+    return userCollection
+        .doc(targetUserId)
+        .collection('reviews')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Review.fromMap(doc.data(), doc.id))
+            .toList());
+  }
 
   Future<void> updateUserData(
       String email,
@@ -97,7 +117,8 @@ class DatabaseService {
   }
 
   // Send message
-  Future<void> sendMessage(String senderId, String receiverId, String message) async {
+  Future<void> sendMessage(String senderId, String receiverId, String content) async {
+    String message = content;
     // Create a chat room ID from the two user IDs (sorted to ensure consistency)
     List<String> ids = [senderId, receiverId];
     ids.sort();
@@ -111,14 +132,20 @@ class DatabaseService {
     });
   }
 
+   // NEW: Send message in any chat room (individual or group)
+  Future<void> sendMessageInChat(String chatRoomId, String senderId, String content) async {
+    await messagesCollection.doc(chatRoomId).collection('chats').add({
+      'senderId': senderId,
+      'content': content, // Changed from 'message' to 'content' for consistency
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
   // Get messages
-  Stream<List<Message>> getMessages(String userId1, String userId2) {
-    List<String> ids = [userId1, userId2];
-    ids.sort();
-    String chatRoomId = ids.join('_');
+  Stream<List<Message>> getMessages(String chatRoomId) {
 
     return messagesCollection
-        .doc(chatRoomId)
+        .doc(chatRoomMId)
         .collection('chats')
         .orderBy('timestamp', descending: true)
         .snapshots()

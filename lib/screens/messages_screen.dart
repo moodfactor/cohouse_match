@@ -1,3 +1,4 @@
+// lib/screens/messages_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cohouse_match/screens/chat_screen.dart';
 import 'package:cohouse_match/services/database_service.dart';
@@ -8,7 +9,7 @@ import 'package:provider/provider.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
-
+  
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
 }
@@ -48,56 +49,81 @@ class _MessagesScreenState extends State<MessagesScreen> {
             itemCount: matches.length,
             itemBuilder: (context, index) {
               final match = matches[index];
-              final chatPartnerId = match.user1Id == currentUser.uid ? match.user2Id : match.user1Id;
+              final String chatRoomId = match.id;
 
-              return FutureBuilder<UserData?>(
-                future: _databaseService.userDataFromUid(chatPartnerId).first,
-                builder: (context, userSnapshot) {
-                  if (userSnapshot.connectionState == ConnectionState.waiting) {
-                    return const ListTile(
-                      title: Text('Loading...'),
-                    );
-                  }
-                  if (userSnapshot.hasError) {
-                    return ListTile(
-                      title: Text('Error loading user: ${userSnapshot.error}'),
-                    );
-                  }
-                  if (!userSnapshot.hasData) {
-                    return const ListTile(
-                      title: Text('User not found'),
-                    );
-                  }
-
-                  final chatPartner = userSnapshot.data!;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: chatPartner.photoUrl != null
-                            ? NetworkImage(chatPartner.photoUrl!) as ImageProvider<Object>?
-                            : null,
-                        child: chatPartner.photoUrl == null
-                            ? const Icon(Icons.person) : null,
-                      ),
-                      title: Text(chatPartner.name ?? 'No Name'),
-                      subtitle: Text(chatPartner.email),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(
-                              chatPartnerId: chatPartner.uid,
-                              chatPartnerName: chatPartner.name ?? chatPartner.email,
-                            ),
+              if (match.type == 'group') {
+                // Build a list tile for a group chat
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.group)),
+                    title: const Text('Group Match'),
+                    subtitle: Text('Created on ${match.timestamp.toLocal().toString().split(' ')[0]}'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                            chatRoomId: chatRoomId,
+                            chatTitle: 'Group Chat',
+                            // Pass all members for displaying names in the chat
+                            memberIds: match.members,
                           ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              );
+                        ),
+                      );
+                    },
+                  ),
+                );
+              } else {
+                // For individual chats
+                final chatPartnerId = match.user1Id == currentUser.uid ? match.user2Id : match.user1Id;
+                
+                return FutureBuilder<UserData?>(
+                  future: _databaseService.userDataFromUid(chatPartnerId).first,
+                  builder: (context, userSnapshot) {
+                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                        child: const ListTile(
+                          leading: CircleAvatar(child: Icon(Icons.person)),
+                          title: Text('Loading...'),
+                          subtitle: Text('Fetching user data'),
+                        ),
+                      );
+                    }
+
+                    final chatPartner = userSnapshot.data;
+                    
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: chatPartner?.photoUrl != null
+                              ? NetworkImage(chatPartner!.photoUrl!)
+                              : null,
+                          child: chatPartner?.photoUrl == null
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        title: Text(chatPartner?.name ?? 'No Name'),
+                        subtitle: Text(chatPartner?.email ?? 'No email'),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(
+                                chatRoomId: chatRoomId,
+                                chatTitle: chatPartner?.name ?? 'Chat',
+                                memberIds: [currentUser.uid, chatPartnerId],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                );
+              }
             },
           );
         },
