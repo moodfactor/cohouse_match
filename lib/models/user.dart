@@ -35,10 +35,10 @@ class UserData {
       photoUrl: data['photoUrl'],
       personalityTags: data['personalityTags'] != null
           ? List<String>.from(data['personalityTags'])
-          : null,
+          : [],
       lifestyleDetails: data['lifestyleDetails'] != null
           ? List<String>.from(data['lifestyleDetails'])
-          : null,
+          : [],
       budget: data['budget']?.toDouble(),
       location: data['location'],
       gender: data['gender'],
@@ -65,11 +65,12 @@ class UserData {
   bool get isProfileComplete {
     return (name?.isNotEmpty ?? false) &&
            (bio?.isNotEmpty ?? false) &&
+           (photoUrl?.isNotEmpty ?? false) &&
            (personalityTags?.isNotEmpty ?? false) &&
            (lifestyleDetails?.isNotEmpty ?? false) &&
-           (budget != null) &&
+           (budget != null && budget! > 0) &&
            (location?.isNotEmpty ?? false) &&
            (gender?.isNotEmpty ?? false) &&
-           (age != null);
+           (age != null && age! > 0);
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -21,31 +22,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _name;
   String? _bio;
   String? _photoUrl;
-  List<String>? _personalityTags;
-  List<String>? _lifestyleDetails;
+  List<String> _personalityTags = [];
+  List<String> _lifestyleDetails = [];
   double? _budget;
   String? _location;
   String? _gender;
   int? _age;
-  File? _imageFile;
+  XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
+  bool _isInitialized = false; // Flag to prevent re-initialization
+
+  // Controllers for form fields
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController bioController = TextEditingController();
+  final TextEditingController budgetController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
+  final TextEditingController ageController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Controllers are initialized empty and populated by the StreamBuilder once.
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    bioController.dispose();
+    budgetController.dispose();
+    locationController.dispose();
+    ageController.dispose();
+    super.dispose();
+  }
+
+  ImageProvider _getProfileImageProvider() {
+    if (_imageFile != null) {
+      if (kIsWeb) {
+        return NetworkImage(_imageFile!.path);
+      } else {
+        return FileImage(File(_imageFile!.path));
+      }
+    }
+    if (_photoUrl != null && _photoUrl!.isNotEmpty) {
+      return NetworkImage(_photoUrl!);
+    }
+    // Make sure you have a default profile image in your assets folder
+    return const AssetImage('assets/default_profile.png');
+  }
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      if (pickedFile != null) {
-        _imageFile = File(pickedFile.path);
-      }
-    });
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = pickedFile;
+      });
+    }
   }
-
 
   Future<String?> _uploadImage(String uid) async {
     if (_imageFile == null) return null;
 
     try {
-      final storageRef = FirebaseStorage.instance.ref().child('profile_images/$uid.jpg');
-      await storageRef.putFile(_imageFile!);
+      final storageRef =
+          FirebaseStorage.instance.ref().child('profile_images/$uid.jpg');
+      if (kIsWeb) {
+        await storageRef.putData(await _imageFile!.readAsBytes());
+      } else {
+        await storageRef.putFile(File(_imageFile!.path));
+      }
       return await storageRef.getDownloadURL();
     } catch (e) {
       print('Error uploading image: $e');
@@ -64,32 +108,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return StreamBuilder<UserData?>(
       stream: DatabaseService(uid: user.uid).userData,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (snapshot.hasData && snapshot.data != null) {
-          UserData? userData = snapshot.data;
-          _name = userData?.name;
-          _bio = userData?.bio;
-          _photoUrl = userData?.photoUrl;
-          _personalityTags = userData?.personalityTags;
-          _lifestyleDetails = userData?.lifestyleDetails;
-          _budget = userData?.budget;
-          _location = userData?.location;
-          _gender = userData?.gender;
-          _age = userData?.age;
-
-          return _buildProfileForm(user.uid, user);
-        } else {
-          // If snapshot has no data (user document doesn't exist), show empty form
-          return _buildProfileForm(user.uid, user);
         }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        // Initialize form data only once from the stream
+        if (snapshot.hasData && snapshot.data != null && !_isInitialized) {
+          UserData userData = snapshot.data!;
+          _name = userData.name;
+          _bio = userData.bio;
+          _photoUrl = userData.photoUrl;
+          _personalityTags = userData.personalityTags ?? [];
+          _lifestyleDetails = userData.lifestyleDetails ?? [];
+          _budget = userData.budget;
+          _location = userData.location;
+          _gender = userData.gender;
+          _age = userData.age;
+
+          // Update controllers
+          nameController.text = _name ?? '';
+          bioController.text = _bio ?? '';
+          budgetController.text = _budget?.toString() ?? '';
+          locationController.text = _location ?? '';
+          ageController.text = _age?.toString() ?? '';
+
+          _isInitialized = true;
+        }
+
+        return _buildProfileForm(user.uid, user);
       },
     );
   }
 
-  Widget _buildProfileForm(String uid, final User user) {
+  Widget _buildProfileForm(String uid, User user) {
+    // Controllers are now managed in the StreamBuilder, no need to set them here.
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
@@ -106,46 +161,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: CircleAvatar(
                     radius: 60,
                     backgroundColor: Colors.grey[200],
-                    backgroundImage: _imageFile != null
-                        ? FileImage(_imageFile!)
-                        : (_photoUrl != null ? NetworkImage(_photoUrl!) : null) as ImageProvider<Object>?,
-                    child: _imageFile == null && _photoUrl == null
-                        ? Icon(Icons.camera_alt, size: 40, color: Colors.grey[600])
+                    backgroundImage: _getProfileImageProvider(),
+                    child: _imageFile == null &&
+                            (_photoUrl == null || _photoUrl!.isEmpty)
+                        ? Icon(Icons.camera_alt,
+                            size: 40, color: Colors.grey[600])
                         : null,
                   ),
                 ),
               ),
               const SizedBox(height: 20.0),
               TextFormField(
-                initialValue: _name,
+                controller: nameController,
                 decoration: const InputDecoration(labelText: 'Name'),
                 validator: (val) =>
                     val!.isEmpty ? 'Please enter a name' : null,
-                onChanged: (val) => setState(() => _name = val),
               ),
               const SizedBox(height: 20.0),
               TextFormField(
-                initialValue: _bio,
+                controller: bioController,
                 decoration: const InputDecoration(labelText: 'Bio'),
                 maxLines: 3,
-                onChanged: (val) => setState(() => _bio = val),
               ),
               const SizedBox(height: 20.0),
               TextFormField(
-                initialValue: _budget?.toString(),
-                decoration: const InputDecoration(labelText: 'Budget'),
+                controller: ageController,
+                decoration: const InputDecoration(labelText: 'Age'),
                 keyboardType: TextInputType.number,
                 validator: (val) =>
-                    val!.isEmpty ? 'Please enter a budget' : null,
-                onChanged: (val) => setState(() => _budget = double.tryParse(val)),
-              ),
-              const SizedBox(height: 20.0),
-              TextFormField(
-                initialValue: _location,
-                decoration: const InputDecoration(labelText: 'Location'),
-                validator: (val) =>
-                    val!.isEmpty ? 'Please enter a location' : null,
-                onChanged: (val) => setState(() => _location = val),
+                    val!.isEmpty ? 'Please enter your age' : null,
               ),
               const SizedBox(height: 20.0),
               DropdownButtonFormField<String>(
@@ -163,36 +207,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _gender = newValue;
                   });
                 },
+                validator: (val) => val == null ? 'Please select a gender' : null,
               ),
               const SizedBox(height: 20.0),
               TextFormField(
-                initialValue: _age?.toString(),
-                decoration: const InputDecoration(labelText: 'Age'),
+                controller: budgetController,
+                decoration: const InputDecoration(labelText: 'Budget'),
                 keyboardType: TextInputType.number,
                 validator: (val) =>
-                    val!.isEmpty ? 'Please enter your age' : null,
-                onChanged: (val) => setState(() => _age = int.tryParse(val)),
+                    val!.isEmpty ? 'Please enter a budget' : null,
+              ),
+              const SizedBox(height: 20.0),
+              TextFormField(
+                controller: locationController,
+                decoration: const InputDecoration(labelText: 'Location'),
+                validator: (val) =>
+                    val!.isEmpty ? 'Please enter a location' : null,
               ),
               const SizedBox(height: 20.0),
               const Text('Personality Tags:'),
               MultiSelectChip(
-                ['Introvert', 'Extrovert', 'Thinker', 'Feeler', 'Organized', 'Spontaneous'],
+                [
+                  'Introvert',
+                  'Extrovert',
+                  'Thinker',
+                  'Feeler',
+                  'Organized',
+                  'Spontaneous'
+                ],
                 initialSelection: _personalityTags,
                 onSelectionChanged: (selectedList) {
-                  setState(() {
-                    _personalityTags = selectedList;
-                  });
+                  _personalityTags = selectedList;
                 },
               ),
               const SizedBox(height: 20.0),
               const Text('Lifestyle Details:'),
               MultiSelectChip(
-                ['Pet-friendly', 'Night Owl', 'Early Bird', 'Vegetarian', 'Vegan', 'Remote Worker', 'Student'],
+                [
+                  'Pet-friendly',
+                  'Night Owl',
+                  'Early Bird',
+                  'Vegetarian',
+                  'Vegan',
+                  'Remote Worker',
+                  'Student'
+                ],
                 initialSelection: _lifestyleDetails,
                 onSelectionChanged: (selectedList) {
-                  setState(() {
-                    _lifestyleDetails = selectedList;
-                  });
+                  _lifestyleDetails = selectedList;
                 },
               ),
               const SizedBox(height: 20.0),
@@ -200,6 +262,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: const Text('Update Profile'),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
+                    _name = nameController.text;
+                    _bio = bioController.text;
+                    _budget = double.tryParse(budgetController.text);
+                    _location = locationController.text;
+                    _age = int.tryParse(ageController.text);
+
                     String? newPhotoUrl = await _uploadImage(uid);
                     await DatabaseService(uid: uid).updateUserData(
                       user.email!,
@@ -213,9 +281,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _gender,
                       _age,
                     );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Profile Updated')),
-                    );
+
+                    if (mounted) {
+                      if (newPhotoUrl != null) {
+                        setState(() {
+                          _photoUrl = newPhotoUrl;
+                          _imageFile = null;
+                        });
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Profile Updated')),
+                      );
+                    }
                   }
                 },
               ),
@@ -226,3 +303,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
+
