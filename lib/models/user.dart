@@ -10,6 +10,7 @@ class UserData {
   String? location;
   String? gender;
   int? age;
+  List<String>? fcmTokens;
 
   UserData({
     required this.uid,
@@ -23,6 +24,7 @@ class UserData {
     this.location,
     this.gender,
     this.age,
+    this.fcmTokens,
   });
 
   // Factory constructor to create a UserData object from a map (Firestore document)
@@ -43,6 +45,9 @@ class UserData {
       location: data['location'],
       gender: data['gender'],
       age: data['age'],
+      fcmTokens: data['fcmTokens'] != null
+          ? List<String>.from(data['fcmTokens'])
+          : [],
     );
   }
 
@@ -59,6 +64,7 @@ class UserData {
       'location': location,
       'gender': gender,
       'age': age,
+      'fcmTokens': fcmTokens, 
     };
   }
 
