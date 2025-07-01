@@ -7,7 +7,6 @@ import 'package:cohouse_match/services/database_service.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:cohouse_match/widgets/multi_select_chip.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -19,18 +18,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? _name;
-  String? _bio;
   String? _photoUrl;
   List<String> _personalityTags = [];
   List<String> _lifestyleDetails = [];
-  double? _budget;
-  String? _location;
   String? _gender;
-  int? _age;
   XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
-  bool _isInitialized = false; // Flag to prevent re-initialization
+  bool _isInitialized = false;
+  bool _isLoading = false;
 
   // Controllers for form fields
   final TextEditingController nameController = TextEditingController();
@@ -38,12 +33,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController budgetController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    // Controllers are initialized empty and populated by the StreamBuilder once.
-  }
 
   @override
   void dispose() {
@@ -66,16 +55,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_photoUrl != null && _photoUrl!.isNotEmpty) {
       return NetworkImage(_photoUrl!);
     }
-    // Make sure you have a default profile image in your assets folder
     return const AssetImage('assets/default_profile.png');
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = pickedFile;
-      });
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = pickedFile;
+        });
+      }
+    } catch (e) {
+      _showErrorSnackbar('Failed to pick image: $e');
     }
   }
 
@@ -92,8 +89,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       return await storageRef.getDownloadURL();
     } catch (e) {
-      print('Error uploading image: $e');
+      _showErrorSnackbar('Failed to upload image: $e');
       return null;
+    }
+  }
+
+  void _showErrorSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _showSuccessSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateProfile(String uid, String email) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Parse form values
+      final name = nameController.text.trim();
+      final bio = bioController.text.trim();
+      final budget = double.tryParse(budgetController.text.trim());
+      final location = locationController.text.trim();
+      final age = int.tryParse(ageController.text.trim());
+
+      // Validate parsed values
+      if (age == null || age <= 0) {
+        _showErrorSnackbar('Please enter a valid age');
+        return;
+      }
+      if (budget == null || budget <= 0) {
+        _showErrorSnackbar('Please enter a valid budget');
+        return;
+      }
+      if (_gender == null) {
+        _showErrorSnackbar('Please select a gender');
+        return;
+      }
+
+      // Upload image if changed
+      String? newPhotoUrl;
+      if (_imageFile != null) {
+        newPhotoUrl = await _uploadImage(uid);
+      }
+
+      // Update database
+      await DatabaseService(uid: uid).updateUserData(
+        email,
+        name,
+        bio,
+        newPhotoUrl ?? _photoUrl,
+        _personalityTags,
+        _lifestyleDetails,
+        budget,
+        location,
+        _gender!,
+        age,
+      );
+
+      // Update local state
+      if (newPhotoUrl != null) {
+        setState(() {
+          _photoUrl = newPhotoUrl;
+          _imageFile = null;
+        });
+      }
+
+      _showSuccessSnackbar('Profile updated successfully!');
+    } catch (e) {
+      _showErrorSnackbar('Failed to update profile: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -102,206 +188,381 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = Provider.of<User?>(context);
 
     if (user == null) {
-      return const Center(child: CircularProgressIndicator()); // Or a login prompt
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading user data...'),
+            ],
+          ),
+        ),
+      );
     }
 
     return StreamBuilder<UserData?>(
       stream: DatabaseService(uid: user.uid).userData,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading profile...'),
+                ],
+              ),
+            ),
+          );
         }
+
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() {}),
+                    child: Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         // Initialize form data only once from the stream
         if (snapshot.hasData && snapshot.data != null && !_isInitialized) {
-          UserData userData = snapshot.data!;
-          _name = userData.name;
-          _bio = userData.bio;
+          final userData = snapshot.data!;
           _photoUrl = userData.photoUrl;
           _personalityTags = userData.personalityTags ?? [];
           _lifestyleDetails = userData.lifestyleDetails ?? [];
-          _budget = userData.budget;
-          _location = userData.location;
           _gender = userData.gender;
-          _age = userData.age;
 
           // Update controllers
-          nameController.text = _name ?? '';
-          bioController.text = _bio ?? '';
-          budgetController.text = _budget?.toString() ?? '';
-          locationController.text = _location ?? '';
-          ageController.text = _age?.toString() ?? '';
+          nameController.text = userData.name ?? '';
+          bioController.text = userData.bio ?? '';
+          budgetController.text = userData.budget?.toString() ?? '';
+          locationController.text = userData.location ?? '';
+          ageController.text = userData.age?.toString() ?? '';
 
           _isInitialized = true;
         }
 
-        return _buildProfileForm(user.uid, user);
+        return _buildProfileForm(user.uid, user.email!);
       },
     );
   }
 
-  Widget _buildProfileForm(String uid, User user) {
-    // Controllers are now managed in the StreamBuilder, no need to set them here.
+  Widget _buildProfileForm(String uid, String email) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 1,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: <Widget>[
-              Center(
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: _getProfileImageProvider(),
-                    child: _imageFile == null &&
-                            (_photoUrl == null || _photoUrl!.isEmpty)
-                        ? Icon(Icons.camera_alt,
-                            size: 40, color: Colors.grey[600])
-                        : null,
+      body: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(20.0),
+              children: [
+                // Profile Image Section
+                Center(
+                  child: Stack(
+                    children: [
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 58,
+                            backgroundColor: Colors.grey[100],
+                            backgroundImage: _getProfileImageProvider(),
+                            child: _imageFile == null &&
+                                    (_photoUrl == null || _photoUrl!.isEmpty)
+                                ? Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Colors.grey[400],
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.surface,
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.camera_alt,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 20.0),
-              TextFormField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (val) =>
-                    val!.isEmpty ? 'Please enter a name' : null,
-              ),
-              const SizedBox(height: 20.0),
-              TextFormField(
-                controller: bioController,
-                decoration: const InputDecoration(labelText: 'Bio'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 20.0),
-              TextFormField(
-                controller: ageController,
-                decoration: const InputDecoration(labelText: 'Age'),
-                keyboardType: TextInputType.number,
-                validator: (val) =>
-                    val!.isEmpty ? 'Please enter your age' : null,
-              ),
-              const SizedBox(height: 20.0),
-              DropdownButtonFormField<String>(
-                value: _gender,
-                decoration: const InputDecoration(labelText: 'Gender'),
-                items: <String>['Male', 'Female', 'Other']
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _gender = newValue;
-                  });
-                },
-                validator: (val) => val == null ? 'Please select a gender' : null,
-              ),
-              const SizedBox(height: 20.0),
-              TextFormField(
-                controller: budgetController,
-                decoration: const InputDecoration(labelText: 'Budget'),
-                keyboardType: TextInputType.number,
-                validator: (val) =>
-                    val!.isEmpty ? 'Please enter a budget' : null,
-              ),
-              const SizedBox(height: 20.0),
-              TextFormField(
-                controller: locationController,
-                decoration: const InputDecoration(labelText: 'Location'),
-                validator: (val) =>
-                    val!.isEmpty ? 'Please enter a location' : null,
-              ),
-              const SizedBox(height: 20.0),
-              const Text('Personality Tags:'),
-              MultiSelectChip(
-                [
-                  'Introvert',
-                  'Extrovert',
-                  'Thinker',
-                  'Feeler',
-                  'Organized',
-                  'Spontaneous'
-                ],
-                initialSelection: _personalityTags,
-                onSelectionChanged: (selectedList) {
-                  _personalityTags = selectedList;
-                },
-              ),
-              const SizedBox(height: 20.0),
-              const Text('Lifestyle Details:'),
-              MultiSelectChip(
-                [
-                  'Pet-friendly',
-                  'Night Owl',
-                  'Early Bird',
-                  'Vegetarian',
-                  'Vegan',
-                  'Remote Worker',
-                  'Student'
-                ],
-                initialSelection: _lifestyleDetails,
-                onSelectionChanged: (selectedList) {
-                  _lifestyleDetails = selectedList;
-                },
-              ),
-              const SizedBox(height: 20.0),
-              ElevatedButton(
-                child: const Text('Update Profile'),
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    _name = nameController.text;
-                    _bio = bioController.text;
-                    _budget = double.tryParse(budgetController.text);
-                    _location = locationController.text;
-                    _age = int.tryParse(ageController.text);
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    'Tap to change photo',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 32),
 
-                    String? newPhotoUrl = await _uploadImage(uid);
-                    await DatabaseService(uid: uid).updateUserData(
-                      user.email!,
-                      _name,
-                      _bio,
-                      newPhotoUrl ?? _photoUrl,
-                      _personalityTags,
-                      _lifestyleDetails,
-                      _budget,
-                      _location,
-                      _gender,
-                      _age,
-                    );
+                // Form Fields
+                _buildTextField(
+                  controller: nameController,
+                  label: 'Full Name',
+                  icon: Icons.person_outline,
+                  validator: (val) => val?.isEmpty == true ? 'Name is required' : null,
+                ),
+                const SizedBox(height: 20),
 
-                    if (mounted) {
-                      if (newPhotoUrl != null) {
-                        setState(() {
-                          _photoUrl = newPhotoUrl;
-                          _imageFile = null;
-                        });
-                      }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Profile Updated')),
-                      );
+                _buildTextField(
+                  controller: bioController,
+                  label: 'Bio',
+                  icon: Icons.edit_note,
+                  maxLines: 3,
+                  hint: 'Tell others about yourself...',
+                ),
+                const SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: ageController,
+                        label: 'Age',
+                        icon: Icons.cake_outlined,
+                        keyboardType: TextInputType.number,
+                        validator: (val) {
+                          if (val?.isEmpty == true) return 'Age is required';
+                          final age = int.tryParse(val!);
+                          if (age == null || age <= 0 || age > 120) {
+                            return 'Enter a valid age';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildDropdown(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                _buildTextField(
+                  controller: budgetController,
+                  label: 'Budget (\$)',
+                  icon: Icons.attach_money,
+                  keyboardType: TextInputType.number,
+                  validator: (val) {
+                    if (val?.isEmpty == true) return 'Budget is required';
+                    final budget = double.tryParse(val!);
+                    if (budget == null || budget <= 0) {
+                      return 'Enter a valid budget';
                     }
-                  }
-                },
-              ),
-            ],
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                _buildTextField(
+                  controller: locationController,
+                  label: 'Location',
+                  icon: Icons.location_on_outlined,
+                  validator: (val) => val?.isEmpty == true ? 'Location is required' : null,
+                ),
+                const SizedBox(height: 32),
+
+                // Personality Tags
+                _buildSectionHeader('Personality Tags'),
+                const SizedBox(height: 12),
+                MultiSelectChip(
+                  ['Introvert', 'Extrovert', 'Thinker', 'Feeler', 'Organized', 'Spontaneous'],
+                  initialSelection: _personalityTags,
+                  onSelectionChanged: (selectedList) {
+                    setState(() {
+                      _personalityTags = selectedList;
+                    });
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Lifestyle Details
+                _buildSectionHeader('Lifestyle Details'),
+                const SizedBox(height: 12),
+                MultiSelectChip(
+                  ['Pet-friendly', 'Night Owl', 'Early Bird', 'Vegetarian', 'Vegan', 'Remote Worker', 'Student'],
+                  initialSelection: _lifestyleDetails,
+                  onSelectionChanged: (selectedList) {
+                    setState(() {
+                      _lifestyleDetails = selectedList;
+                    });
+                  },
+                ),
+                const SizedBox(height: 40),
+
+                // Update Button
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : () => _updateProfile(uid, email),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Update Profile',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    String? hint,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+      ),
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: validator,
+    );
+  }
+
+  Widget _buildDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _gender,
+      decoration: InputDecoration(
+        labelText: 'Gender',
+        prefixIcon: const Icon(Icons.person_outline),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+      ),
+      items: ['Male', 'Female', 'Other', 'Prefer not to say']
+          .map((String value) => DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              ))
+          .toList(),
+      onChanged: (String? newValue) {
+        setState(() {
+          _gender = newValue;
+        });
+      },
+      validator: (val) => val == null ? 'Please select a gender' : null,
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+    );
+  }
 }
-
-
