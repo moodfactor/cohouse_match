@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:cohouse_match/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cohouse_match/screens/wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
   final Function toggleView;
@@ -51,10 +54,43 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('Sign In'),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    dynamic result = await _auth.signInWithEmail(email, password);
-                    if (result == null) {
+                    setState(() {
+                      error = ''; // Clear any previous errors
+                    });
+                    try {
+                      User? result = await _auth.signInWithEmail(email, password);
+                      if (result == null) {
+                        setState(() {
+                          error = 'Could not sign in with those credentials';
+                        });
+                      } else {
+                        // Force a rebuild of the Wrapper to check profile status
+                        // This ensures the user data stream is updated
+                        Provider.of<User?>(context, listen: false);
+                        
+                        // Navigate to home wrapper which will handle onboarding if needed
+                        // Using pushReplacement to clear the login screen from the navigation stack
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const Wrapper()),
+                        );
+                      }
+                    } on FirebaseAuthException catch (e) {
                       setState(() {
-                        error = 'Could not sign in with those credentials';
+                        // Provide more specific error messages for common cases
+                        if (e.code == 'user-not-found') {
+                          error = 'No user found with this email.';
+                        } else if (e.code == 'wrong-password') {
+                          error = 'Wrong password provided.';
+                        } else if (e.code == 'invalid-email') {
+                          error = 'Invalid email address.';
+                        } else {
+                          error = e.message ?? 'An unknown error occurred';
+                        }
+                      });
+                    } catch (e) {
+                      setState(() {
+                        error = 'An unexpected error occurred: $e';
                       });
                     }
                   }
@@ -69,10 +105,30 @@ class _LoginScreenState extends State<LoginScreen> {
               ElevatedButton(
                 child: const Text('Sign In with Google'),
                 onPressed: () async {
-                  dynamic result = await _auth.signInWithGoogle();
-                  if (result == null) {
+                  setState(() {
+                    error = ''; // Clear any previous errors
+                  });
+                  try {
+                    User? result = await _auth.signInWithGoogle();
+                    if (result == null) {
+                      setState(() {
+                        error = 'Could not sign in with Google';
+                      });
+                    } else {
+                      // Force a rebuild of the Wrapper to check profile status
+                      // This ensures the user data stream is updated
+                      Provider.of<User?>(context, listen: false);
+                      
+                      // Navigate to home wrapper which will handle onboarding if needed
+                      // Using pushReplacement to clear the login screen from the navigation stack
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const Wrapper()),
+                      );
+                    }
+                  } catch (e) {
                     setState(() {
-                      error = 'Could not sign in with Google';
+                      error = 'Google sign in failed: ${e.toString()}';
                     });
                   }
                 },

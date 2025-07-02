@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:cohouse_match/services/auth_service.dart';
+import 'package:cohouse_match/models/user.dart';
+import 'package:cohouse_match/screens/wrapper.dart';
 
 class RegisterScreen extends StatefulWidget {
   final Function toggleView;
@@ -60,10 +64,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: const Text('Register'),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    dynamic result = await _auth.registerWithEmail(email, password);
-                    if (result == null) {
+                    setState(() {
+                      error = ''; // Clear any previous errors
+                    });
+                    try {
+                      User? result = await _auth.registerWithEmail(email, password);
+                      if (result == null) {
+                        setState(() {
+                          error = 'Registration failed. Please try again.';
+                        });
+                      } else {
+                        // Force a rebuild of the Wrapper to check profile status
+                        Provider.of<User?>(context, listen: false);
+                        // Navigate to home wrapper which will handle onboarding if needed
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const Wrapper()),
+                        );
+                      }
+                    } on FirebaseAuthException catch (e) {
                       setState(() {
-                        error = 'Please supply a valid email';
+                        // Provide more specific error messages for common cases
+                        if (e.code == 'weak-password') {
+                          error = 'The password provided is too weak.';
+                        } else if (e.code == 'email-already-in-use') {
+                          error = 'An account already exists for that email.';
+                        } else if (e.code == 'invalid-email') {
+                          error = 'The email address is invalid.';
+                        } else {
+                          error = e.message ?? 'An unknown error occurred';
+                        }
+                      });
+                    } catch (e) {
+                      setState(() {
+                        error = 'Registration failed: ${e.toString()}';
                       });
                     }
                   }

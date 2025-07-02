@@ -21,8 +21,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Provider<AuthService>(
-      create: (_) => AuthService(),
+    return MultiProvider(
+      providers: [
+        Provider<AuthService>(create: (_) => AuthService()),
+        StreamProvider<User?>.value(
+          value: FirebaseAuth.instance.authStateChanges(),
+          initialData: null,
+        ),
+      ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
         title: 'CohouseMatch',

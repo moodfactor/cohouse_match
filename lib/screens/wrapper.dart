@@ -1,8 +1,6 @@
-// lib/screens/wrapper.dart
 import 'package:cohouse_match/screens/authenticate.dart';
 import 'package:cohouse_match/screens/home_wrapper.dart';
-import 'package:cohouse_match/services/auth_service.dart';
-import 'package:cohouse_match/screens/onboarding/onboarding_screen.dart'; 
+import 'package:cohouse_match/screens/onboarding/onboarding_screen.dart'; // Keep this import
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:flutter/material.dart';
@@ -15,45 +13,57 @@ class Wrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
+    // Get the User object from the StreamProvider
+    final user = context.watch<User?>();
 
-    return StreamBuilder<User?>(
-      stream: authService.user,
-      builder: (context, userSnapshot) {
-        if (userSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
+    // If the user is not logged in, show the authentication screen
+    if (user == null) {
+      return const Authenticate();
+    } 
+    
+    // If the user IS logged in, proceed
+    else {
+      // Initialize notifications and save the FCM token
+      final notificationService = NotificationService();
+      notificationService.initNotifications();
+      notificationService.saveTokenToDatabase(user.uid);
 
-        final user = userSnapshot.data;
+      // Now, stream the user's data from Firestore to check profile status
+      return StreamBuilder<UserData?>(
+        stream: DatabaseService().userDataFromUid(user.uid),
+        builder: (context, userSnapshot) {
+          // While waiting for the Firestore data, show a loading indicator
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          }
 
-        if (user == null) {
-          return const Authenticate();
-        } else {
-          final notificationService = NotificationService();
-          notificationService.initNotifications();
-          notificationService.saveTokenToDatabase(user.uid);
+          // If the stream has an error
+          if (userSnapshot.hasError) {
+            return const Scaffold(body: Center(child: Text("Something went wrong!")));
+          }
+          
+          // If the stream has data and it's not null (document exists)
+          if (userSnapshot.hasData && userSnapshot.data != null) {
+            final userData = userSnapshot.data!;
 
-          return StreamBuilder<UserData?>(
-            stream: DatabaseService(uid: user.uid).userData,
-            builder: (context, userDataSnapshot) {
-              if (userDataSnapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(body: Center(child: CircularProgressIndicator()));
-              }
-
-              if (userDataSnapshot.hasData && userDataSnapshot.data != null) {
-                final userData = userDataSnapshot.data!;
-                if (userData.isProfileComplete) {
-                  return const HomeWrapper();
-                } else {
-                  return OnboardingScreen(firebaseUser: user);
-                }
-              } else {
-                return OnboardingScreen(firebaseUser: user);
-              }
-            },
-          );
-        }
-      },
-    );
+            // Use the getter to check if the profile is complete
+            if (userData.isProfileComplete) {
+              // If complete, show the main app
+              return const HomeWrapper();
+            } else {
+              // If not complete, show the onboarding screen and PASS THE USER OBJECT
+              return OnboardingScreen(firebaseUser: user); 
+            }
+          } 
+          
+          // If the document does not exist yet (or is null), it's a new user.
+          // This case is handled by your AuthService now, but as a fallback,
+          // we direct them to onboarding.
+          else {
+            return OnboardingScreen(firebaseUser: user);
+          }
+        },
+      );
+    }
   }
 }

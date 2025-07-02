@@ -1,4 +1,3 @@
-// lib/screens/onboarding/onboarding_screen.dart
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -27,20 +26,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentPage = 0;
 
-  // This map will hold the user's data as they fill it out
-  final Map<String, dynamic> _userData = {};
+  // Controllers for WelcomePage
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
+
+  // Controllers for DetailsPage
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _budgetController = TextEditingController();
+  String? _selectedGender;
+
+  // Data for PhotoPage and TagsPage
+  String? _photoUrl;
+  List<String> _personalityTags = [];
+  List<String> _lifestyleDetails = [];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _bioController.dispose();
+    _locationController.dispose();
+    _budgetController.dispose();
+    super.dispose();
+  }
 
   void _nextPage() {
-    // Validate current page before proceeding
-    if (_currentPage == 0) { // Welcome page
-      if (!_formKey.currentState!.validate()) return;
-      _formKey.currentState!.save();
-    } else if (_currentPage == 2) { // Details page
-      if (!_formKey.currentState!.validate()) return;
-      _formKey.currentState!.save();
-    }
-
-    if (_currentPage < 3) {
+    if (_formKey.currentState!.validate()) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeIn,
@@ -49,46 +61,51 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finishOnboarding() async {
-    // Validate all forms before final submission
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    _formKey.currentState!.save();
 
-    // Validate required fields
-    if (!_userData.containsKey('name') || _userData['name'] == null) {
+    // Collect all data directly from controllers and state variables
+    final String? name = _nameController.text.trim().isEmpty ? null : _nameController.text.trim();
+    final int? age = int.tryParse(_ageController.text.trim());
+    final String? bio = _bioController.text.trim().isEmpty ? null : _bioController.text.trim();
+    final String? location = _locationController.text.trim().isEmpty ? null : _locationController.text.trim();
+    final double? budget = double.tryParse(_budgetController.text.trim());
+
+    // Validate required fields before saving
+    if (name == null) {
       _showErrorSnackbar('Please enter your name');
       return;
     }
-    if (!_userData.containsKey('age') || _userData['age'] == null) {
-      _showErrorSnackbar('Please enter your age');
+    if (age == null || age <= 0) {
+      _showErrorSnackbar('Please enter a valid age');
       return;
     }
-    if (!_userData.containsKey('photoUrl') || _userData['photoUrl'] == null) {
+    if (_photoUrl == null) {
       _showErrorSnackbar('Please upload a profile photo');
       return;
     }
-    if (!_userData.containsKey('bio') || _userData['bio'] == null) {
+    if (bio == null) {
       _showErrorSnackbar('Please tell us about yourself');
       return;
     }
-    if (!_userData.containsKey('location') || _userData['location'] == null) {
+    if (location == null) {
       _showErrorSnackbar('Please enter your location');
       return;
     }
-    if (!_userData.containsKey('budget') || _userData['budget'] == null) {
-      _showErrorSnackbar('Please enter your budget');
+    if (budget == null || budget <= 0) {
+      _showErrorSnackbar('Please enter a valid budget');
       return;
     }
-    if (!_userData.containsKey('personalityTags') ||
-        _userData['personalityTags'] == null ||
-        _userData['personalityTags'].isEmpty) {
+    if (_selectedGender == null) {
+      _showErrorSnackbar('Please select your gender');
+      return;
+    }
+    if (_personalityTags.isEmpty) {
       _showErrorSnackbar('Please select at least one personality tag');
       return;
     }
-    if (!_userData.containsKey('lifestyleDetails') ||
-        _userData['lifestyleDetails'] == null ||
-        _userData['lifestyleDetails'].isEmpty) {
+    if (_lifestyleDetails.isEmpty) {
       _showErrorSnackbar('Please select at least one lifestyle detail');
       return;
     }
@@ -96,15 +113,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       await DatabaseService(uid: widget.firebaseUser.uid).updateUserData(
         widget.firebaseUser.email!,
-        _userData['name'],
-        _userData['bio'],
-        _userData['photoUrl'],
-        List<String>.from(_userData['personalityTags']),
-        List<String>.from(_userData['lifestyleDetails']),
-        _userData['budget'] is int ? (_userData['budget'] as int).toDouble() : _userData['budget'],
-        _userData['location'],
-        _userData['gender'],
-        _userData['age'],
+        name,
+        bio,
+        _photoUrl,
+        _personalityTags,
+        _lifestyleDetails,
+        budget,
+        location,
+        _selectedGender,
+        age,
       );
       // The Wrapper will automatically detect the completed profile and navigate to HomeWrapper
     } catch (e) {
@@ -122,22 +139,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final pages = [
       WelcomePage(
+        nameController: _nameController,
+        ageController: _ageController,
         onNext: _nextPage,
-        onDataChanged: (data) => _userData.addAll(data),
-        formKey: _formKey
       ),
       PhotoPage(
         onNext: _nextPage,
-        onDataChanged: (data) => _userData.addAll(data)
+        onDataChanged: (data) => setState(() => _photoUrl = data['photoUrl']),
       ),
       DetailsPage(
+        bioController: _bioController,
+        locationController: _locationController,
+        budgetController: _budgetController,
+        onGenderChanged: (gender) => setState(() => _selectedGender = gender),
         onNext: _nextPage,
-        onDataChanged: (data) => _userData.addAll(data),
-        formKey: _formKey
       ),
       TagsPage(
         onFinish: _finishOnboarding,
-        onDataChanged: (data) => _userData.addAll(data)
+        onPersonalityTagsChanged: (tags) => setState(() => _personalityTags = tags),
+        onLifestyleDetailsChanged: (details) => setState(() => _lifestyleDetails = details),
       ),
     ];
 
