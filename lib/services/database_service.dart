@@ -50,18 +50,24 @@ class DatabaseService {
       String? location,
       String? gender,
       int? age) async {
-    return await userCollection.doc(uid).set({
+    // Create a base map with email which is required
+    Map<String, dynamic> userData = {
       'email': email,
-      'name': name,
-      'bio': bio,
-      'photoUrl': photoUrl,
-      'personalityTags': personalityTags,
-      'lifestyleDetails': lifestyleDetails,
-      'budget': budget,
-      'location': location,
-      'gender': gender,
-      'age': age,
-    }, SetOptions(merge: true));
+      'isProfileComplete': true, // Mark profile as complete after onboarding
+    };
+
+    // Add other fields only if they're not null
+    if (name != null) userData['name'] = name;
+    if (bio != null) userData['bio'] = bio;
+    if (photoUrl != null) userData['photoUrl'] = photoUrl;
+    if (personalityTags != null) userData['personalityTags'] = personalityTags;
+    if (lifestyleDetails != null) userData['lifestyleDetails'] = lifestyleDetails;
+    if (budget != null) userData['budget'] = budget;
+    if (location != null) userData['location'] = location;
+    if (gender != null) userData['gender'] = gender;
+    if (age != null) userData['age'] = age;
+
+    return await userCollection.doc(uid).set(userData, SetOptions(merge: true));
   }
 
   // user data from snapshots
@@ -84,6 +90,9 @@ class DatabaseService {
           : null,
       budget: data['budget']?.toDouble(),
       location: data['location'],
+      gender: data['gender'],
+      age: data['age'],
+      isProfileComplete: data['isProfileComplete'] ?? false,
     );
   }
 
@@ -115,6 +124,7 @@ class DatabaseService {
         location: data['location'],
         gender: data['gender'],
         age: data['age'],
+        isProfileComplete: data['isProfileComplete'] ?? false,
       );
     });
   }
@@ -146,9 +156,8 @@ class DatabaseService {
 
   // Get messages
   Stream<List<Message>> getMessages(String chatRoomId) {
-
     return messagesCollection
-        .doc(chatRoomMId)
+        .doc(chatRoomId)
         .collection('chats')
         .orderBy('timestamp', descending: true)
         .snapshots()

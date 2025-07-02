@@ -11,6 +11,7 @@ class UserData {
   String? gender;
   int? age;
   List<String>? fcmTokens;
+  bool isProfileComplete;
 
   UserData({
     required this.uid,
@@ -25,6 +26,7 @@ class UserData {
     this.gender,
     this.age,
     this.fcmTokens,
+    this.isProfileComplete = false,
   });
 
   // Factory constructor to create a UserData object from a map (Firestore document)
@@ -48,6 +50,7 @@ class UserData {
       fcmTokens: data['fcmTokens'] != null
           ? List<String>.from(data['fcmTokens'])
           : [],
+      isProfileComplete: data['isProfileComplete'] ?? false,
     );
   }
 
@@ -64,19 +67,9 @@ class UserData {
       'location': location,
       'gender': gender,
       'age': age,
-      'fcmTokens': fcmTokens, 
+      'fcmTokens': fcmTokens,
+      'isProfileComplete': isProfileComplete,
     };
   }
 
-  bool get isProfileComplete {
-    return (name?.isNotEmpty ?? false) &&
-           (bio?.isNotEmpty ?? false) &&
-           (photoUrl?.isNotEmpty ?? false) &&
-           (personalityTags?.isNotEmpty ?? false) &&
-           (lifestyleDetails?.isNotEmpty ?? false) &&
-           (budget != null && budget! > 0) &&
-           (location?.isNotEmpty ?? false) &&
-           (gender?.isNotEmpty ?? false) &&
-           (age != null && age! > 0);
-  }
 }

@@ -14,18 +14,15 @@ void main() async {
   runApp(const MyApp());
 }
 
-      
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return StreamProvider<User?>.value(
-      value: AuthService().user,
-      initialData: null,
+    return Provider<AuthService>(
+      create: (_) => AuthService(),
       child: MaterialApp(
         navigatorKey: navigatorKey,
         title: 'CohouseMatch',
