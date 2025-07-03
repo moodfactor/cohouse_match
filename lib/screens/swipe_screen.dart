@@ -11,6 +11,7 @@ import 'package:cohouse_match/services/gemini_service.dart';
 import 'package:cohouse_match/services/api_keys.dart'; // Make sure you have this file
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:cohouse_match/widgets/multi_select_chip.dart'; // Keep for filter dialog
+import 'package:logging/logging.dart'; // Import logging package
 
 class SwipeScreen extends StatefulWidget {
   const SwipeScreen({super.key});
@@ -25,8 +26,9 @@ class _SwipeScreenState extends State<SwipeScreen> {
   final GeminiService _geminiService = GeminiService(apiKey: geminiApiKey);
   UserData? _currentLoggedInUser;
   bool _isLoading = true;
+  final _log = Logger('SwipeScreen'); // Initialize logger
 
-  int _currentIndex = 0; // Track the current index for swiping
+  // Removed unused _currentIndex field
   
 
   // Filter parameters
@@ -80,7 +82,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
         _usersToSwipe = filteredUsers;
       });
     } catch (e) {
-      print('Error loading users: $e');
+      _log.severe('Error loading users', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error loading users: $e")));
       }
@@ -186,7 +188,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
         );
       }
     } catch (e) {
-      print('Error processing match: $e');
+      _log.severe('Error processing match', e);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -195,27 +197,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
     }
   }
 
-  void _nextUser() {
-    setState(() {
-      if (_usersToSwipe.isEmpty) return;
-
-      if (_currentIndex < _usersToSwipe.length - 1) {
-        _currentIndex++;
-      } else {
-        // No more users to swipe, show message and reload
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'No more users to swipe. Adjust your filters or try again later.',
-              ),
-            ),
-          );
-        }
-        _loadUsers(); // Try to load more users
-      }
-    });
-  }
+  // Removed unused _nextUser method
 
   void _showCreateGroupMatchDialog() {
     final currentUser = Provider.of<User?>(context, listen: false);
@@ -447,7 +429,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                         padding: const EdgeInsets.all(24.0),
                         cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
                           // **** FIX 1: Corrected typo here ****
-                          final user = _usersToSwipe[index]; 
+                          final user = _usersToSwipe[index];
                           return _buildUserCard(user);
                         },
                       ),
