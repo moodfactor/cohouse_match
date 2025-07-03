@@ -6,10 +6,10 @@ import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/models/match.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-
+import 'package:cohouse_match/widgets/empty_state_widget.dart'; // Import empty state widget
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
-  
+
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
 }
@@ -42,7 +42,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
           final matches = snapshot.data ?? [];
 
           if (matches.isEmpty) {
-            return const Center(child: Text('No matches yet. Swipe right to find a match!'));
+            // <<<< ENHANCEMENT 4: Use Empty State Widget
+            return const EmptyStateWidget(
+              icon: Icons.chat_bubble_outline_rounded,
+              title: "No Conversations",
+              subtitle: "When you match with someone, you can start chatting here.",
+            );
           }
 
           return ListView.builder(

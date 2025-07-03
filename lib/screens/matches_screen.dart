@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cohouse_match/models/match.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
+import 'package:cohouse_match/widgets/empty_state_widget.dart'; // Import empty state widget
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key});
@@ -14,8 +15,9 @@ class MatchesScreen extends StatefulWidget {
 
 class _MatchesScreenState extends State<MatchesScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  
 
-  @override
+    @override
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser;
 
@@ -37,7 +39,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No matches yet.'));
+            // <<<< ENHANCEMENT 3: Use Empty State Widget
+            return const EmptyStateWidget(
+              icon: Icons.favorite_border,
+              title: "No Matches Yet",
+              subtitle: "Your new matches will appear here once you swipe right on someone!",
+            );
           }
 
           final matches = snapshot.data!;
@@ -92,7 +99,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
   } else {
     // --- THIS IS THE PART TO MODIFY FOR INDIVIDUAL MATCHES ---
     final matchedUserId = match.user1Id == currentUser.uid ? match.user2Id : match.user1Id;
-
     return FutureBuilder<UserData?>(
       future: DatabaseService().userDataFromUid(matchedUserId).first,
       builder: (context, userSnapshot) {

@@ -71,7 +71,21 @@ Return a single, valid JSON object with two keys:
 
       // The model is now configured to return JSON, so direct parsing is safer.
       // No need to manually find '{' and '}'
-      final Map<String, dynamic> result = json.decode(text);
+      dynamic result;
+      try {
+        result = json.decode(text);
+      } catch (e) {
+        print('Error decoding JSON response: $e');
+        print('Raw response: $text');
+        return null;
+      }
+
+      // Ensure result is a Map
+      if (result is! Map<String, dynamic>) {
+        print('Invalid response type: ${result.runtimeType}');
+        print('Raw response: $text');
+        return null;
+      }
 
       if (result.containsKey('score') && result.containsKey('explanation')) {
         return result;

@@ -1,4 +1,6 @@
 // lib/screens/swipe_screen.dart
+import 'package:cohouse_match/widgets/card_skeleton_loader.dart';
+import 'package:cohouse_match/widgets/empty_state_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
@@ -18,12 +20,14 @@ class SwipeScreen extends StatefulWidget {
 }
 
 class _SwipeScreenState extends State<SwipeScreen> {
-  List<UserData> _usersToSwipe = [];
+ List<UserData> _usersToSwipe = [];
   final CardSwiperController _swiperController = CardSwiperController();
   final GeminiService _geminiService = GeminiService(apiKey: geminiApiKey);
   UserData? _currentLoggedInUser;
   bool _isLoading = true;
-  int _currentIndex = 0;
+
+  int _currentIndex = 0; // Track the current index for swiping
+  
 
   // Filter parameters
   double? _minBudget;
@@ -41,7 +45,8 @@ class _SwipeScreenState extends State<SwipeScreen> {
     _loadUsers();
   }
 
-  Future<void> _loadUsers() async {
+
+ Future<void> _loadUsers() async {
     setState(() {
       _isLoading = true;
     });
@@ -49,105 +54,55 @@ class _SwipeScreenState extends State<SwipeScreen> {
     try {
       final currentUser = Provider.of<User?>(context, listen: false);
       if (currentUser == null) {
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
-      _currentLoggedInUser = await DatabaseService(
-        uid: currentUser.uid,
-      ).userData.first;
+      _currentLoggedInUser = await DatabaseService(uid: currentUser.uid).userData.first;
 
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .get();
+      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('users').get();
+      List<UserData> allUsers = snapshot.docs.map((doc) => UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
 
-      List<UserData> allUsers = snapshot.docs
-          .map(
-            (doc) =>
-                UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id),
-          )
-          .toList();
-
-      // Client-side filtering
       List<UserData> filteredUsers = allUsers.where((user) {
-        if (user.uid == currentUser.uid) {
-          return false;
-        }
-        if (_minBudget != null &&
-            user.budget != null &&
-            user.budget! < _minBudget!) {
-          return false;
-        }
-        if (_maxBudget != null &&
-            user.budget != null &&
-            user.budget! > _maxBudget!) {
-          return false;
-        }
-        if (_locationFilter != null &&
-            _locationFilter!.isNotEmpty &&
-            user.location != _locationFilter) {
-          return false;
-        }
-        if (_selectedLifestyleDetails.isNotEmpty &&
-            !_selectedLifestyleDetails.any(
-              (item) => user.lifestyleDetails?.contains(item) ?? false,
-            )) {
-          return false;
-        }
-        if (_selectedPersonalityTags.isNotEmpty &&
-            !_selectedPersonalityTags.any(
-              (item) => user.personalityTags?.contains(item) ?? false,
-            )) {
-          return false;
-        }
-        if (_selectedGender != null && user.gender != _selectedGender) {
-          return false;
-        }
-        if (_minAge != null && user.age != null && user.age! < _minAge!) {
-          return false;
-        }
-        if (_maxAge != null && user.age != null && user.age! > _maxAge!) {
-          return false;
-        }
+        if (user.uid == currentUser.uid) return false;
+        if (_minBudget != null && user.budget != null && user.budget! < _minBudget!) return false;
+        if (_maxBudget != null && user.budget != null && user.budget! > _maxBudget!) return false;
+        if (_locationFilter != null && _locationFilter!.isNotEmpty && user.location != _locationFilter) return false;
+        if (_selectedLifestyleDetails.isNotEmpty && !_selectedLifestyleDetails.any((item) => user.lifestyleDetails?.contains(item) ?? false)) return false;
+        if (_selectedPersonalityTags.isNotEmpty && !_selectedPersonalityTags.any((item) => user.personalityTags?.contains(item) ?? false)) return false;
+        if (_selectedGender != null && user.gender != _selectedGender) return false;
+        if (_minAge != null && user.age != null && user.age! < _minAge!) return false;
+        if (_maxAge != null && user.age != null && user.age! > _maxAge!) return false;
         return true;
       }).toList();
 
       setState(() {
         _usersToSwipe = filteredUsers;
-        _currentIndex = 0;
       });
     } catch (e) {
       print('Error loading users: $e');
-      // Optionally, show an error message to the user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error loading users: $e")));
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  Future<bool> _onSwipe(
-    int previousIndex,
-    int? currentIndex,
-    CardSwiperDirection direction,
-  ) async {
+  Future<bool> _onSwipe(int previousIndex, int? currentIndex, CardSwiperDirection direction) async {
     final swipedUser = _usersToSwipe[previousIndex];
 
     if (direction == CardSwiperDirection.right) {
-      // User swiped right (like)
       await _handleMatch(swipedUser);
     } else {
-      // User swiped left, up, or down (pass)
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Passed on ${swipedUser.name}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Passed on ${swipedUser.name}')));
       }
     }
-
-    // Move to next card
-    _nextUser();
-
-    // This callback must return true to move to the next card
     return true;
   }
 
@@ -172,6 +127,51 @@ class _SwipeScreenState extends State<SwipeScreen> {
         swipedUser,
       );
 
+      // Handle potential null or invalid response
+      if (matchResult == null) {
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Match Result'),
+                content: const Text('Could not get match score from Gemini.'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('OK'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+        return;
+      }
+
+      // Ensure matchResult is a Map
+      if (matchResult is! Map<String, dynamic>) {
+        print('Invalid match result type: ${matchResult.runtimeType}');
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Match Result'),
+                content: const Text('Invalid match score format from Gemini.'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('OK'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+        return;
+      }
+
       // Show match score and explanation in an AlertDialog
       if (mounted) {
         await showDialog(
@@ -189,10 +189,10 @@ class _SwipeScreenState extends State<SwipeScreen> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
-                    Text('Score: ${matchResult?['score'] ?? 'N/A'} / 100'),
+                    Text('Score: ${matchResult['score'] ?? 'N/A'} / 100'),
                     const SizedBox(height: 10),
                     Text(
-                      matchResult?['explanation'] ??
+                      matchResult['explanation'] ??
                           'Could not get match explanation.',
                     ),
                   ],
@@ -441,92 +441,64 @@ class _SwipeScreenState extends State<SwipeScreen> {
     );
   }
 
-  @override
+
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CohouseMatch'),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.group_add),
-            onPressed: _showCreateGroupMatchDialog,
-          ),
+          IconButton(icon: const Icon(Icons.filter_list), onPressed: _showFilterDialog),
+          IconButton(icon: const Icon(Icons.group_add), onPressed: _showCreateGroupMatchDialog),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const CardSkeletonLoader()
           : _usersToSwipe.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Text(
-                  'No users found matching your criteria. Try adjusting your filters!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: CardSwiper(
-                    controller: _swiperController,
-                    cardsCount: _usersToSwipe.length,
-                    onSwipe: _onSwipe,
-                    padding: const EdgeInsets.all(24.0),
-                    cardBuilder:
-                        (context, index, percentThresholdX, percentThresholdY) {
-                          final user = _usersToSwipe[index];
+              ? const EmptyStateWidget(
+                  icon: Icons.search_off_rounded,
+                  title: "No Users Found",
+                  subtitle: "Try adjusting your search filters or check back later for new people!",
+                )
+              : Column(
+                  children: [
+                    Expanded(
+                      child: CardSwiper(
+                        controller: _swiperController,
+                        cardsCount: _usersToSwipe.length,
+                        onSwipe: _onSwipe,
+                        padding: const EdgeInsets.all(24.0),
+                        cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
+                          // **** FIX 1: Corrected typo here ****
+                          final user = _usersToSwipe[index]; 
                           return _buildUserCard(user);
                         },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 40.0, top: 20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      FloatingActionButton(
-                        onPressed: () {
-                          // Simulate left swipe
-                          _onSwipe(
-                            _currentIndex,
-                            _currentIndex + 1,
-                            CardSwiperDirection.left,
-                          );
-                        },
-                        backgroundColor: Colors.white,
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.red,
-                          size: 30,
-                        ),
                       ),
-                      FloatingActionButton(
-                        onPressed: () {
-                          // Simulate right swipe
-                          _onSwipe(
-                            _currentIndex,
-                            _currentIndex + 1,
-                            CardSwiperDirection.right,
-                          );
-                        },
-                        backgroundColor: Colors.white,
-                        child: const Icon(
-                          Icons.favorite,
-                          color: Colors.green,
-                          size: 30,
-                        ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 40.0, top: 20.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          FloatingActionButton(
+                            heroTag: 'swipe_left_button',
+                            // **** FIX 2: Corrected controller method ****
+                            onPressed: () => _swiperController.swipe(CardSwiperDirection.left),
+                            backgroundColor: Colors.white,
+                            child: const Icon(Icons.close, color: Colors.red, size: 30),
+                          ),
+                          FloatingActionButton(
+                            heroTag: 'swipe_right_button',
+                            // **** FIX 3: Corrected controller method ****
+                            onPressed: () => _swiperController.swipe(CardSwiperDirection.right),
+                            backgroundColor: Colors.white,
+                            child: const Icon(Icons.favorite, color: Colors.green, size: 30),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
     );
   }
 
