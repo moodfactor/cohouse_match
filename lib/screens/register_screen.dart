@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:cohouse_match/services/auth_service.dart';
-import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/screens/wrapper.dart';
 
 class RegisterScreen extends StatefulWidget {

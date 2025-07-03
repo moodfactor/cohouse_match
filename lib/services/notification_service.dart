@@ -1,6 +1,5 @@
 // lib/services/notification_service.dart
 import 'package:cohouse_match/screens/matches_screen.dart';
-import 'package:cohouse_match/screens/messages_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

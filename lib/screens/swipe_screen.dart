@@ -149,29 +149,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
         return;
       }
 
-      // Ensure matchResult is a Map
-      if (matchResult is! Map<String, dynamic>) {
-        print('Invalid match result type: ${matchResult.runtimeType}');
-        if (mounted) {
-          await showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Match Result'),
-                content: const Text('Invalid match score format from Gemini.'),
-                actions: <Widget>[
-                  TextButton(
-                    child: const Text('OK'),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-        return;
-      }
-
       // Show match score and explanation in an AlertDialog
       if (mounted) {
         await showDialog(

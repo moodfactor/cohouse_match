@@ -25,7 +25,7 @@ class AuthService {
       }
       
       return result.user;
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException {
       // Add more specific error handling if needed
       rethrow;
     }
@@ -57,7 +57,7 @@ class AuthService {
       await _ensureUserDataInitialized(result.user!.uid);
       
       return result.user;
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException {
       // Add more specific error handling if needed
       rethrow;
     }
@@ -71,7 +71,7 @@ class AuthService {
         return null; // User cancelled sign in
       }
       
-      final GoogleSignInAuthentication? googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       if (googleAuth == null) {
         return null; // Failed to get authentication
       }

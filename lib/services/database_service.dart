@@ -60,8 +60,9 @@ class DatabaseService {
     if (bio != null) userData['bio'] = bio;
     if (photoUrl != null) userData['photoUrl'] = photoUrl;
     if (personalityTags != null) userData['personalityTags'] = personalityTags;
-    if (lifestyleDetails != null)
+    if (lifestyleDetails != null) {
       userData['lifestyleDetails'] = lifestyleDetails;
+    }
     if (budget != null) userData['budget'] = budget;
     if (location != null) userData['location'] = location;
     if (gender != null) userData['gender'] = gender;
