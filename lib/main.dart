@@ -67,7 +67,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MultiProvider(
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
-        Provider<PresenceService>(create: (_) => PresenceService()),
+        Provider<PresenceService>.value(value: _presenceService),
         StreamProvider<User?>.value(
           value: _authStream,
           initialData: null,

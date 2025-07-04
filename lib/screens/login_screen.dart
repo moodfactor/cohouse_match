@@ -69,10 +69,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         Provider.of<User?>(context, listen: false);
                         
                         // Navigate to home wrapper which will handle onboarding if needed
-                        // Using pushReplacement to clear the login screen from the navigation stack
-                        Navigator.pushReplacement(
+                        // Using pushAndRemoveUntil to ensure clean navigation state
+                        Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(builder: (context) => const Wrapper()),
+                          (route) => false, // Remove all previous routes
                         );
                       }
                     } on FirebaseAuthException catch (e) {
@@ -120,10 +121,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       Provider.of<User?>(context, listen: false);
                       
                       // Navigate to home wrapper which will handle onboarding if needed
-                      // Using pushReplacement to clear the login screen from the navigation stack
-                      Navigator.pushReplacement(
+                      // Using pushAndRemoveUntil to ensure clean navigation state
+                      Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (context) => const Wrapper()),
+                        (route) => false, // Remove all previous routes
                       );
                     }
                   } catch (e) {
