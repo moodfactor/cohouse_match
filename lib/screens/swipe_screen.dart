@@ -31,7 +31,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
   final _log = Logger('SwipeScreen');
 
   // Holds the current filter state for the screen
-  FilterOptions _activeFilters = FilterOptions.defaultValues();
+  FilterOptions _activeFilters = FilterOptions.noFilters();
 
   // Holds the filter values for the filter dialog
   double? _minBudget;

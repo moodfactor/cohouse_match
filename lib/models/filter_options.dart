@@ -30,4 +30,16 @@ class FilterOptions {
       personalityTags: [],
     );
   }
+
+  // A factory method for no filters
+  factory FilterOptions.noFilters() {
+    return FilterOptions(
+      budgetRange: null,
+      ageRange: null,
+      location: null,
+      gender: null,
+      lifestyleDetails: [],
+      personalityTags: [],
+    );
+  }
 }
