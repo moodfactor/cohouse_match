@@ -1,6 +1,9 @@
 // lib/screens/swipe_screen.dart
+import 'package:cohouse_match/models/filter_options.dart';
+import 'package:cohouse_match/screens/filter_screen.dart';
 import 'package:cohouse_match/widgets/card_skeleton_loader.dart';
 import 'package:cohouse_match/widgets/empty_state_widget.dart';
+import 'package:cohouse_match/widgets/multi_select_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
@@ -8,10 +11,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:cohouse_match/services/gemini_service.dart';
-import 'package:cohouse_match/services/api_keys.dart'; // Make sure you have this file
+import 'package:cohouse_match/services/api_keys.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
-import 'package:cohouse_match/widgets/multi_select_chip.dart'; // Keep for filter dialog
-import 'package:logging/logging.dart'; // Import logging package
+import 'package:logging/logging.dart';
 
 class SwipeScreen extends StatefulWidget {
   const SwipeScreen({super.key});
@@ -21,25 +23,25 @@ class SwipeScreen extends StatefulWidget {
 }
 
 class _SwipeScreenState extends State<SwipeScreen> {
- List<UserData> _usersToSwipe = [];
+  List<UserData> _usersToSwipe = [];
   final CardSwiperController _swiperController = CardSwiperController();
   final GeminiService _geminiService = GeminiService(apiKey: geminiApiKey);
   UserData? _currentLoggedInUser;
   bool _isLoading = true;
-  final _log = Logger('SwipeScreen'); // Initialize logger
+  final _log = Logger('SwipeScreen');
 
-  // Removed unused _currentIndex field
-  
+  // Holds the current filter state for the screen
+  FilterOptions _activeFilters = FilterOptions.defaultValues();
 
-  // Filter parameters
+  // Holds the filter values for the filter dialog
   double? _minBudget;
   double? _maxBudget;
   String? _locationFilter;
-  List<String> _selectedLifestyleDetails = [];
-  List<String> _selectedPersonalityTags = [];
   String? _selectedGender;
   int? _minAge;
   int? _maxAge;
+  List<String> _selectedLifestyleDetails = [];
+  List<String> _selectedPersonalityTags = [];
 
   @override
   void initState() {
@@ -47,8 +49,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
     _loadUsers();
   }
 
-
- Future<void> _loadUsers() async {
+  Future<void> _loadUsers() async {
     setState(() {
       _isLoading = true;
     });
@@ -60,21 +61,71 @@ class _SwipeScreenState extends State<SwipeScreen> {
         return;
       }
 
-      _currentLoggedInUser = await DatabaseService(uid: currentUser.uid).userData.first;
+      _currentLoggedInUser = await DatabaseService(
+        uid: currentUser.uid,
+      ).userData.first;
 
-      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('users').get();
-      List<UserData> allUsers = snapshot.docs.map((doc) => UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .get();
+      List<UserData> allUsers = snapshot.docs
+          .map(
+            (doc) =>
+                UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id),
+          )
+          .toList();
 
+      // Apply filters from the _activeFilters object
       List<UserData> filteredUsers = allUsers.where((user) {
         if (user.uid == currentUser.uid) return false;
-        if (_minBudget != null && user.budget != null && user.budget! < _minBudget!) return false;
-        if (_maxBudget != null && user.budget != null && user.budget! > _maxBudget!) return false;
-        if (_locationFilter != null && _locationFilter!.isNotEmpty && user.location != _locationFilter) return false;
-        if (_selectedLifestyleDetails.isNotEmpty && !_selectedLifestyleDetails.any((item) => user.lifestyleDetails?.contains(item) ?? false)) return false;
-        if (_selectedPersonalityTags.isNotEmpty && !_selectedPersonalityTags.any((item) => user.personalityTags?.contains(item) ?? false)) return false;
-        if (_selectedGender != null && user.gender != _selectedGender) return false;
-        if (_minAge != null && user.age != null && user.age! < _minAge!) return false;
-        if (_maxAge != null && user.age != null && user.age! > _maxAge!) return false;
+
+        // Budget Filter
+        if (_activeFilters.budgetRange != null) {
+          if (user.budget == null ||
+              user.budget! < _activeFilters.budgetRange!.start ||
+              user.budget! > _activeFilters.budgetRange!.end) {
+            return false;
+          }
+        }
+
+        // Age Filter
+        if (_activeFilters.ageRange != null) {
+          if (user.age == null ||
+              user.age! < _activeFilters.ageRange!.start ||
+              user.age! > _activeFilters.ageRange!.end) {
+            return false;
+          }
+        }
+
+        // Location Filter
+        if (_activeFilters.location != null &&
+            _activeFilters.location!.isNotEmpty) {
+          if (user.location == null ||
+              !user.location!.toLowerCase().contains(
+                _activeFilters.location!.toLowerCase(),
+              )) {
+            return false;
+          }
+        }
+
+        // Gender Filter
+        if (_activeFilters.gender != null &&
+            user.gender != _activeFilters.gender) {
+          return false;
+        }
+
+        // Tags Filters
+        if (_activeFilters.lifestyleDetails.isNotEmpty &&
+            !_activeFilters.lifestyleDetails.any(
+              (item) => user.lifestyleDetails?.contains(item) ?? false,
+            ))
+          return false;
+        if (_activeFilters.personalityTags.isNotEmpty &&
+            !_activeFilters.personalityTags.any(
+              (item) => user.personalityTags?.contains(item) ?? false,
+            ))
+          return false;
+
         return true;
       }).toList();
 
@@ -84,7 +135,9 @@ class _SwipeScreenState extends State<SwipeScreen> {
     } catch (e) {
       _log.severe('Error loading users', e);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error loading users: $e")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error loading users: $e")));
       }
     } finally {
       if (mounted) {
@@ -95,14 +148,38 @@ class _SwipeScreenState extends State<SwipeScreen> {
     }
   }
 
-  Future<bool> _onSwipe(int previousIndex, int? currentIndex, CardSwiperDirection direction) async {
+  /// Navigates to the FilterScreen and awaits the results.
+  Future<void> _navigateToFilterScreen() async {
+    final result = await Navigator.push<FilterOptions>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FilterScreen(initialFilters: _activeFilters),
+      ),
+    );
+
+    // If the user applied filters (didn't just back out), update the state and reload.
+    if (result != null) {
+      setState(() {
+        _activeFilters = result;
+      });
+      _loadUsers();
+    }
+  }
+
+  Future<bool> _onSwipe(
+    int previousIndex,
+    int? currentIndex,
+    CardSwiperDirection direction,
+  ) async {
     final swipedUser = _usersToSwipe[previousIndex];
 
     if (direction == CardSwiperDirection.right) {
       await _handleMatch(swipedUser);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Passed on ${swipedUser.name}')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Passed on ${swipedUser.name}')));
       }
     }
     return true;
@@ -384,6 +461,20 @@ class _SwipeScreenState extends State<SwipeScreen> {
             TextButton(
               child: const Text('Apply'),
               onPressed: () {
+                setState(() {
+                  _activeFilters = FilterOptions(
+                    budgetRange: _minBudget != null && _maxBudget != null
+                        ? RangeValues(_minBudget!, _maxBudget!)
+                        : null,
+                    ageRange: _minAge != null && _maxAge != null
+                        ? RangeValues(_minAge!.toDouble(), _maxAge!.toDouble())
+                        : null,
+                    location: _locationFilter,
+                    gender: _selectedGender,
+                    lifestyleDetails: _selectedLifestyleDetails,
+                    personalityTags: _selectedPersonalityTags,
+                  );
+                });
                 _loadUsers(); // Reload users with new filters
                 Navigator.of(context).pop();
               },
@@ -400,64 +491,79 @@ class _SwipeScreenState extends State<SwipeScreen> {
     );
   }
 
-
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CohouseMatch'),
         actions: <Widget>[
-          IconButton(icon: const Icon(Icons.filter_list), onPressed: _showFilterDialog),
-          IconButton(icon: const Icon(Icons.group_add), onPressed: _showCreateGroupMatchDialog),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: _navigateToFilterScreen,
+          ),
+          IconButton(
+            icon: const Icon(Icons.group_add),
+            onPressed: _showCreateGroupMatchDialog,
+          ),
         ],
       ),
       body: _isLoading
           ? const CardSkeletonLoader()
           : _usersToSwipe.isEmpty
-              ? const EmptyStateWidget(
-                  icon: Icons.search_off_rounded,
-                  title: "No Users Found",
-                  subtitle: "Try adjusting your search filters or check back later for new people!",
-                )
-              : Column(
-                  children: [
-                    Expanded(
-                      child: CardSwiper(
-                        controller: _swiperController,
-                        cardsCount: _usersToSwipe.length,
-                        onSwipe: _onSwipe,
-                        padding: const EdgeInsets.all(24.0),
-                        cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
-                          // **** FIX 1: Corrected typo here ****
-                          final user = _usersToSwipe[index];
-                          return _buildUserCard(user);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 40.0, top: 20.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          FloatingActionButton(
-                            heroTag: 'swipe_left_button',
-                            // **** FIX 2: Corrected controller method ****
-                            onPressed: () => _swiperController.swipe(CardSwiperDirection.left),
-                            backgroundColor: Colors.white,
-                            child: const Icon(Icons.close, color: Colors.red, size: 30),
-                          ),
-                          FloatingActionButton(
-                            heroTag: 'swipe_right_button',
-                            // **** FIX 3: Corrected controller method ****
-                            onPressed: () => _swiperController.swipe(CardSwiperDirection.right),
-                            backgroundColor: Colors.white,
-                            child: const Icon(Icons.favorite, color: Colors.green, size: 30),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          ? const EmptyStateWidget(
+              icon: Icons.search_off_rounded,
+              title: "No Users Found",
+              subtitle:
+                  "Try adjusting your search filters or check back later for new people!",
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: CardSwiper(
+                    controller: _swiperController,
+                    cardsCount: _usersToSwipe.length,
+                    onSwipe: _onSwipe,
+                    padding: const EdgeInsets.all(24.0),
+                    numberOfCardsDisplayed: _usersToSwipe.length < 2 ? 1 : 2,
+                    cardBuilder:
+                        (context, index, percentThresholdX, percentThresholdY) {
+                      final user = _usersToSwipe[index];
+                      return _buildUserCard(user);
+                    },
+                  ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 40.0, top: 20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: 'swipe_left_button',
+                        onPressed: () =>
+                            _swiperController.swipe(CardSwiperDirection.left),
+                        backgroundColor: Colors.white,
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.red,
+                          size: 30,
+                        ),
+                      ),
+                      FloatingActionButton(
+                        heroTag: 'swipe_right_button',
+                        onPressed: () =>
+                            _swiperController.swipe(CardSwiperDirection.right),
+                        backgroundColor: Colors.white,
+                        child: const Icon(
+                          Icons.favorite,
+                          color: Colors.green,
+                          size: 30,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
