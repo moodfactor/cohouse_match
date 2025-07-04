@@ -99,21 +99,25 @@ class AuthService {
       // If no user data exists, initialize with basic info
       if (userData == null) {
         final user = _auth.currentUser;
-        await DatabaseService(uid: uid).updateUserData(
-          user?.email ?? '',
-          user?.displayName, // Use Google display name if available
-          null, // bio
-          user?.photoURL, // Use Google photo URL if available
-          null, // personalityTags
-          null, // lifestyleDetails
-          null, // budget
-          null, // location
-          null, // gender
-          null, // age
-        );
+        if (user != null) {
+          await DatabaseService(uid: uid).updateUserData(
+            user.email ?? '',
+            user.displayName, // Use Google display name if available
+            null, // bio
+            user.photoURL, // Use Google photo URL if available
+            null, // personalityTags
+            null, // lifestyleDetails
+            null, // budget
+            null, // location
+            null, // gender
+            null, // age
+          );
+        }
       }
     } catch (e) {
       print('Error ensuring user data initialized: $e');
+      // Re-throw to allow callers to handle the error if needed
+      rethrow;
     }
   }
 
