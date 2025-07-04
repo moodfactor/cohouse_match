@@ -88,11 +88,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     if (userSnapshot.connectionState == ConnectionState.waiting) {
                       return const Card(
                         margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                        child: ListTile(title: Text('Loading...')),
+                        child: ListTile(title: Text('Loading chat partner...')),
                       );
                     }
 
-                    final chatPartner = userSnapshot.data;
+                    if (!userSnapshot.hasData || userSnapshot.data == null) {
+                      return const Card(
+                        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                        child: ListTile(title: Text('Chat partner not found or data unavailable')),
+                      );
+                    }
+
+                    final chatPartner = userSnapshot.data!;
                     
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),

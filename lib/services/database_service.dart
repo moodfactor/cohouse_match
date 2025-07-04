@@ -3,6 +3,7 @@ import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/match.dart';
 import 'package:cohouse_match/models/review.dart';
+import 'package:cohouse_match/services/presence_service.dart'; // Import PresenceService
 
 class DatabaseService {
   final String? uid;
@@ -71,28 +72,43 @@ class DatabaseService {
   }
 
   // user data from snapshots
-  UserData? _userDataFromSnapshot(DocumentSnapshot snapshot) {
+  Future<UserData?> _userDataFromSnapshot(DocumentSnapshot snapshot) async {
     if (!snapshot.exists || snapshot.data() == null) {
       return null;
     }
     Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-    // FIX: Pass the entire map and the uid to the factory constructor.
-    return UserData.fromMap(data, uid!);
+    UserData userData = UserData.fromMap(data, uid!);
+
+    // Fetch isOnline status from Realtime Database
+    bool isOnline = await PresenceService().getPresenceStream(uid!).first;
+    userData.isOnline = isOnline;
+
+    return userData;
   }
 
   // get user doc stream for the current uid
   Stream<UserData?> get userData {
-    return userCollection.doc(uid).snapshots().map(_userDataFromSnapshot);
+    return userCollection.doc(uid).snapshots().asyncMap(_userDataFromSnapshot);
   }
 
   // get user doc stream for a specific uid
   Stream<UserData?> userDataFromUid(String targetUid) {
-    return userCollection.doc(targetUid).snapshots().map((snapshot) {
+    return userCollection.doc(targetUid).snapshots().asyncMap((snapshot) async {
       if (!snapshot.exists || snapshot.data() == null) {
-        return null;
+        return null; // User does not exist, emit null immediately
       }
       Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-      return UserData.fromMap(data, targetUid); // Pass the full map and uid
+      UserData userData = UserData.fromMap(data, targetUid);
+
+      // Fetch isOnline status from Realtime Database with a timeout
+      bool isOnline = await PresenceService().getPresenceStream(targetUid).first.timeout(const Duration(seconds: 5), onTimeout: () {
+        print('Timeout fetching presence for user $targetUid');
+        return false; // Default to offline on timeout
+      });
+      userData.isOnline = isOnline;
+      print('User ${targetUid} is online: ${isOnline}'); // Added log
+
+      return userData;
     });
   }
 
@@ -161,6 +177,7 @@ class DatabaseService {
         .where('members', arrayContains: userId)
         .snapshots()
         .map((snapshot) {
+          print('Fetched ${snapshot.docs.length} matches for user $userId'); // Added print statement
           return snapshot.docs
               .map(
                 (doc) =>
@@ -172,13 +189,18 @@ class DatabaseService {
 
   // Get all users
   Stream<List<UserData>> get users {
-    return userCollection.snapshots().map(
-      (snapshot) => snapshot.docs
-          .map(
-            (doc) =>
-                UserData.fromMap(doc.data() as Map<String, dynamic>, doc.id),
-          )
-          .toList(),
+    return userCollection.snapshots().asyncMap(
+      (snapshot) async {
+        List<UserData> users = [];
+        for (var doc in snapshot.docs) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          UserData userData = UserData.fromMap(data, doc.id);
+          bool isOnline = await PresenceService().getPresenceStream(doc.id).first;
+          userData.isOnline = isOnline;
+          users.add(userData);
+        }
+        return users;
+      },
     );
   }
 

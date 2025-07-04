@@ -103,10 +103,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
       future: DatabaseService().userDataFromUid(matchedUserId).first,
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
-          return const ListTile(title: Text('Loading...'));
+          return const ListTile(title: Text('Loading user data...'));
         }
-        if (!userSnapshot.hasData) {
-          return const ListTile(title: Text('User not found'));
+        if (!userSnapshot.hasData || userSnapshot.data == null) {
+          return const ListTile(title: Text('Matched user not found or data unavailable'));
         }
 
         final matchedUser = userSnapshot.data!;

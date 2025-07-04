@@ -11,6 +11,7 @@ class UserData {
   String? gender;
   int? age;
   List<String>? fcmTokens;
+  bool? isOnline; // Add this line
   UserData({
     required this.uid,
     required this.email,
@@ -24,6 +25,7 @@ class UserData {
     this.gender,
     this.age,
     this.fcmTokens,
+    this.isOnline, // Add this line
   });
 
   // Factory constructor to create a UserData object from a map (Firestore document)
@@ -47,6 +49,7 @@ class UserData {
       fcmTokens: data['fcmTokens'] != null
           ? List<String>.from(data['fcmTokens'])
           : [],
+      isOnline: data['isOnline'], // Add this line
     );
   }
 
@@ -63,7 +66,8 @@ class UserData {
       'location': location,
       'gender': gender,
       'age': age,
-      'fcmTokens': fcmTokens, 
+      'fcmTokens': fcmTokens,
+      'isOnline': isOnline, // Add this line
     };
   }
 

@@ -41,11 +41,6 @@ class _HomeWrapperState extends State<HomeWrapper> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    // Set user offline when the app is fully closed
-    final user = Provider.of<User?>(context, listen: false);
-    if (user != null) {
-      _presenceService.setUserOffline(user.uid);
-    }
     // Remove the observer
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
