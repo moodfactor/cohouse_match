@@ -72,9 +72,6 @@ class AuthService {
       }
       
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      if (googleAuth == null) {
-        return null; // Failed to get authentication
-      }
       
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,

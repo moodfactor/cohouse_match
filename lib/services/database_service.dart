@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/match.dart';
-import 'package:rxdart/rxdart.dart';
 import 'package:cohouse_match/models/review.dart';
 
 class DatabaseService {
