@@ -118,13 +118,15 @@ class _SwipeScreenState extends State<SwipeScreen> {
         if (_activeFilters.lifestyleDetails.isNotEmpty &&
             !_activeFilters.lifestyleDetails.any(
               (item) => user.lifestyleDetails?.contains(item) ?? false,
-            ))
+            )) {
           return false;
+        }
         if (_activeFilters.personalityTags.isNotEmpty &&
             !_activeFilters.personalityTags.any(
               (item) => user.personalityTags?.contains(item) ?? false,
-            ))
+            )) {
           return false;
+        }
 
         return true;
       }).toList();

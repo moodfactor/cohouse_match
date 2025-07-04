@@ -1,10 +1,11 @@
 // lib/screens/chat_screen.dart
 
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
+import 'package:cohouse_match/services/presence_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatRoomId;
@@ -27,18 +28,20 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final DatabaseService _db = DatabaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final PresenceService _presenceService = PresenceService();
 
-  String _chatTitle = '';
-  List<String> _memberIds = [];
-
-  // Cache for member data to prevent fetching on every message
   final Map<String, UserData> _memberData = {};
   bool _isLoadingMembers = true;
+  String? _chatPartnerId;
 
   @override
   void initState() {
     super.initState();
-    _fetchChatDetails();
+    _fetchMemberData();
+    // Identify the chat partner if it's a one-on-one chat
+    if (widget.memberIds.length == 2) {
+      _chatPartnerId = widget.memberIds.firstWhere((id) => id != _auth.currentUser?.uid, orElse: () => '');
+    }
   }
 
   @override
@@ -48,33 +51,8 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  /// Fetches chat details (title and member IDs) from Firestore.
-  Future<void> _fetchChatDetails() async {
-    try {
-      final matchDoc = await _db.matchesCollection.doc(widget.chatRoomId).get();
-      if (matchDoc.exists) {
-        final data = matchDoc.data() as Map<String, dynamic>;
-        setState(() {
-          _chatTitle = data['chatTitle'] ?? 'Chat'; // Assuming a chatTitle field
-          _memberIds = List<String>.from(data['members'] ?? []);
-        });
-        _fetchMemberData();
-      } else {
-        print('Chat room not found: ${widget.chatRoomId}');
-        // Handle case where chat room doesn't exist, e.g., navigate back
-      }
-    } catch (e) {
-      print('Error fetching chat details: $e');
-    }
-  }
-
-  /// Fetches UserData for all members in the chat and stores it in a map for quick access.
   Future<void> _fetchMemberData() async {
-    if (_memberIds.isEmpty) {
-      setState(() => _isLoadingMembers = false);
-      return;
-    }
-    for (String uid in _memberIds) {
+    for (String uid in widget.memberIds) {
       final userData = await _db.userDataFromUid(uid).first;
       if (userData != null) {
         _memberData[uid] = userData;
@@ -85,20 +63,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  /// Sends the message content to Firestore.
   void _sendMessage() {
     final messageText = _messageController.text.trim();
     if (messageText.isNotEmpty) {
       final currentUser = _auth.currentUser;
       if (currentUser != null) {
-        _db.sendMessageInChat(
-          widget.chatRoomId,
-          currentUser.uid,
-          messageText,
-        );
+        _db.sendMessageInChat(widget.chatRoomId, currentUser.uid, messageText);
         _messageController.clear();
-        // The StreamBuilder will handle the new message appearing,
-        // and the auto-scroll logic within it will trigger.
       }
     }
   }
@@ -107,20 +78,34 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
-      // This should ideally not be reached due to the app's wrapper logic.
-      return const Scaffold(
-        body: Center(child: Text('Error: Not logged in.')),
-      );
+      return const Scaffold(body: Center(child: Text('Error: Not logged in.')));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_chatTitle),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.chatTitle),
+            // Show online status for individual chats
+            if (_chatPartnerId != null && _chatPartnerId!.isNotEmpty)
+              StreamBuilder<bool>(
+                stream: _presenceService.getPresenceStream(_chatPartnerId!),
+                builder: (context, snapshot) {
+                  final isOnline = snapshot.data ?? false;
+                  return Text(
+                    isOnline ? 'Online' : 'Offline',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                  );
+                },
+              ),
+          ],
+        ),
       ),
       body: Column(
         children: [
           Expanded(
-            child: _isLoadingMembers || _chatTitle.isEmpty
+            child: _isLoadingMembers
                 ? const Center(child: CircularProgressIndicator())
                 : StreamBuilder<List<Message>>(
                     stream: _db.getMessages(widget.chatRoomId),
@@ -132,14 +117,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Center(
-                          child: Text('No messages yet. Say hello!'),
-                        );
+                        return const Center(child: Text('No messages yet. Say hello!'));
                       }
 
                       final messages = snapshot.data!;
 
-                      // This ensures that the view scrolls to the bottom after the UI has been built.
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (_scrollController.hasClients) {
                           _scrollController.jumpTo(_scrollController.position.minScrollExtent);
@@ -148,14 +130,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
                       return ListView.builder(
                         controller: _scrollController,
-                        reverse: true, // This is key for chat UIs
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(vertical: 10.0),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
                           final message = messages[index];
                           final isMe = message.senderId == currentUser.uid;
                           final sender = _memberData[message.senderId];
-                          final bool isGroupChat = _memberIds.length > 2;
+                          final bool isGroupChat = widget.memberIds.length > 2;
 
                           return _MessageBubble(
                             message: message,
@@ -173,6 +155,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
 
   /// Builds the text input field and send button.
   Widget _buildMessageInput() {

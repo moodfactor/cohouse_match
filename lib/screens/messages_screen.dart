@@ -1,12 +1,14 @@
-// lib/screens/messages_screen.dart
-import 'package:flutter/material.dart';
+// File: lib/screens/messages_screen.dart
+import 'package:cohouse_match/models/match.dart';
+import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/screens/chat_screen.dart';
 import 'package:cohouse_match/services/database_service.dart';
-import 'package:cohouse_match/models/user.dart';
-import 'package:cohouse_match/models/match.dart';
+import 'package:cohouse_match/services/presence_service.dart';
+import 'package:cohouse_match/widgets/empty_state_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cohouse_match/widgets/empty_state_widget.dart'; // Import empty state widget
+
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
 
@@ -20,6 +22,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = Provider.of<User?>(context);
+    final presenceService = Provider.of<PresenceService>(context);
 
     if (currentUser == null) {
       return const Center(child: Text('Please log in to view messages.'));
@@ -42,7 +45,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
           final matches = snapshot.data ?? [];
 
           if (matches.isEmpty) {
-            // <<<< ENHANCEMENT 4: Use Empty State Widget
             return const EmptyStateWidget(
               icon: Icons.chat_bubble_outline_rounded,
               title: "No Conversations",
@@ -57,7 +59,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
               final String chatRoomId = match.id;
 
               if (match.type == 'group') {
-                // Build a list tile for a group chat
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                   child: ListTile(
@@ -71,7 +72,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           builder: (context) => ChatScreen(
                             chatRoomId: chatRoomId,
                             chatTitle: 'Group Chat',
-                            // Pass all members for displaying names in the chat
                             memberIds: match.members,
                           ),
                         ),
@@ -80,20 +80,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   ),
                 );
               } else {
-                // For individual chats
                 final chatPartnerId = match.user1Id == currentUser.uid ? match.user2Id : match.user1Id;
                 
                 return FutureBuilder<UserData?>(
                   future: _databaseService.userDataFromUid(chatPartnerId).first,
                   builder: (context, userSnapshot) {
                     if (userSnapshot.connectionState == ConnectionState.waiting) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                        child: const ListTile(
-                          leading: CircleAvatar(child: Icon(Icons.person)),
-                          title: Text('Loading...'),
-                          subtitle: Text('Fetching user data'),
-                        ),
+                      return const Card(
+                        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                        child: ListTile(title: Text('Loading...')),
                       );
                     }
 
@@ -102,13 +97,38 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: chatPartner?.photoUrl != null
-                              ? NetworkImage(chatPartner!.photoUrl!)
-                              : null,
-                          child: chatPartner?.photoUrl == null
-                              ? const Icon(Icons.person)
-                              : null,
+                        leading: StreamBuilder<bool>(
+                          stream: presenceService.getPresenceStream(chatPartnerId),
+                          builder: (context, presenceSnapshot) {
+                            final isOnline = presenceSnapshot.data ?? false;
+                            return Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 25,
+                                  backgroundImage: chatPartner?.photoUrl != null
+                                      ? NetworkImage(chatPartner!.photoUrl!)
+                                      : null,
+                                  child: chatPartner?.photoUrl == null
+                                      ? const Icon(Icons.person)
+                                      : null,
+                                ),
+                                if (isOnline)
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 15,
+                                      height: 15,
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                         title: Text(chatPartner?.name ?? 'No Name'),
                         subtitle: Text(chatPartner?.email ?? 'No email'),
