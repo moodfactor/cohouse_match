@@ -1,5 +1,6 @@
 // lib/screens/chat_screen.dart
 
+import 'dart:async'; // Import async for Timer
 import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
@@ -34,21 +35,54 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoadingMembers = true;
   String? _chatPartnerId;
 
+  // --- NEW STATE FOR TYPING INDICATOR ---
+  Timer? _typingTimer;
+
   @override
   void initState() {
     super.initState();
     _fetchMemberData();
-    // Identify the chat partner if it's a one-on-one chat
     if (widget.memberIds.length == 2) {
       _chatPartnerId = widget.memberIds.firstWhere((id) => id != _auth.currentUser?.uid, orElse: () => '');
     }
+
+    // Add a listener to the text controller to detect typing
+    _messageController.addListener(_handleTyping);
   }
 
   @override
   void dispose() {
+    // Clean up the typing status and timer when the screen is disposed
+    _setTypingStatus(false);
+    _typingTimer?.cancel();
+    _messageController.removeListener(_handleTyping);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Handles the logic for setting typing status.
+  void _handleTyping() {
+    // If the user is typing, set their status immediately.
+    if (_messageController.text.isNotEmpty) {
+      _setTypingStatus(true);
+    }
+
+    // Cancel any existing timer.
+    _typingTimer?.cancel();
+
+    // Start a new timer. If it completes, the user has stopped typing.
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      _setTypingStatus(false);
+    });
+  }
+  
+  /// Helper to call the presence service to update typing status.
+  void _setTypingStatus(bool isTyping) {
+    final user = _auth.currentUser;
+    if (user != null) {
+      _presenceService.setUserTyping(widget.chatRoomId, user.uid, isTyping);
+    }
   }
 
   Future<void> _fetchMemberData() async {
@@ -64,6 +98,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendMessage() {
+    // When a message is sent, immediately mark user as not typing.
+    _typingTimer?.cancel();
+    _setTypingStatus(false);
+    
     final messageText = _messageController.text.trim();
     if (messageText.isNotEmpty) {
       final currentUser = _auth.currentUser;
@@ -83,24 +121,58 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.chatTitle),
-            // Show online status for individual chats
-            if (_chatPartnerId != null && _chatPartnerId!.isNotEmpty)
-              StreamBuilder<bool>(
-                stream: _presenceService.getPresenceStream(_chatPartnerId!),
-                builder: (context, snapshot) {
-                  final isOnline = snapshot.data ?? false;
-                  return Text(
-                    isOnline ? 'Online' : 'Offline',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-                  );
-                },
+        title: _isLoadingMembers
+            ? Text(widget.chatTitle) // Show default title while loading
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.chatTitle),
+                  StreamBuilder<List<String>>(
+                    // Listen to the typing stream
+                    stream: _presenceService.getTypingStream(
+                      widget.chatRoomId,
+                      currentUser.uid,
+                      _memberData,
+                    ),
+                    builder: (context, snapshot) {
+                      final typingNames = snapshot.data ?? [];
+                      if (typingNames.isNotEmpty) {
+                        // Display "is typing..." message
+                        return Text(
+                          '${typingNames.join(', ')} is typing...',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.normal,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        );
+                      } else {
+                        // Otherwise, show the online status for individual chats
+                        if (_chatPartnerId != null &&
+                            _chatPartnerId!.isNotEmpty) {
+                          return StreamBuilder<bool>(
+                            stream: _presenceService.getPresenceStream(
+                              _chatPartnerId!,
+                            ),
+                            builder: (context, presenceSnapshot) {
+                              final isOnline = presenceSnapshot.data ?? false;
+                              return Text(
+                                isOnline ? 'Online' : 'Offline',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              );
+                            },
+                          );
+                        }
+                      }
+                      // Return an empty widget if no status to show
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ],
               ),
-          ],
-        ),
       ),
       body: Column(
         children: [
@@ -110,21 +182,26 @@ class _ChatScreenState extends State<ChatScreen> {
                 : StreamBuilder<List<Message>>(
                     stream: _db.getMessages(widget.chatRoomId),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          !snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
                       }
                       if (snapshot.hasError) {
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Center(child: Text('No messages yet. Say hello!'));
+                        return const Center(
+                          child: Text('No messages yet. Say hello!'),
+                        );
                       }
 
                       final messages = snapshot.data!;
 
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (_scrollController.hasClients) {
-                          _scrollController.jumpTo(_scrollController.position.minScrollExtent);
+                          _scrollController.jumpTo(
+                            _scrollController.position.minScrollExtent,
+                          );
                         }
                       });
 
@@ -155,7 +232,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-
 
   /// Builds the text input field and send button.
   Widget _buildMessageInput() {
@@ -218,13 +294,16 @@ class _MessageBubble extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (showSenderInfo)
             CircleAvatar(
               radius: 15,
-              backgroundImage: (sender?.photoUrl != null && sender!.photoUrl!.isNotEmpty)
+              backgroundImage:
+                  (sender?.photoUrl != null && sender!.photoUrl!.isNotEmpty)
                   ? NetworkImage(sender!.photoUrl!)
                   : null,
               child: (sender?.photoUrl == null || sender!.photoUrl!.isEmpty)
@@ -234,14 +313,21 @@ class _MessageBubble extends StatelessWidget {
           if (showSenderInfo) const SizedBox(width: 8),
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14.0,
+                vertical: 10.0,
+              ),
               decoration: BoxDecoration(
                 color: isMe ? Theme.of(context).primaryColor : Colors.grey[200],
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
-                  bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(0),
-                  bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(18),
+                  bottomLeft: isMe
+                      ? const Radius.circular(18)
+                      : const Radius.circular(0),
+                  bottomRight: isMe
+                      ? const Radius.circular(0)
+                      : const Radius.circular(18),
                 ),
               ),
               child: Column(

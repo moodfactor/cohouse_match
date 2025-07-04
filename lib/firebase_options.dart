@@ -46,7 +46,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '242037756353',
     projectId: 'cohousematch',
     authDomain: 'cohousematch.firebaseapp.com',
-    databaseURL: 'https://cohousematch.firebaseio.com',
+    databaseURL: 'https://cohousematch-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'cohousematch.firebasestorage.app',
     measurementId: 'G-SJECK63BYZ',
   );
@@ -56,7 +56,7 @@ class DefaultFirebaseOptions {
     appId: '1:242037756353:android:3f649e278a23f44b971f40',
     messagingSenderId: '242037756353',
     projectId: 'cohousematch',
-    databaseURL: 'https://cohousematch.firebaseio.com',
+    databaseURL: 'https://cohousematch-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'cohousematch.firebasestorage.app',
   );
 
@@ -65,8 +65,9 @@ class DefaultFirebaseOptions {
     appId: '1:242037756353:ios:78657080e97a6700971f40',
     messagingSenderId: '242037756353',
     projectId: 'cohousematch',
-    databaseURL: 'https://cohousematch.firebaseio.com',
+    databaseURL: 'https://cohousematch-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'cohousematch.firebasestorage.app',
+    iosClientId: '242037756353-hc8j1mo3b3dhcnacis44v7ienn1daao5.apps.googleusercontent.com',
     iosBundleId: 'com.example.cohouseMatch',
   );
 
@@ -75,8 +76,9 @@ class DefaultFirebaseOptions {
     appId: '1:242037756353:ios:78657080e97a6700971f40',
     messagingSenderId: '242037756353',
     projectId: 'cohousematch',
-    databaseURL: 'https://cohousematch.firebaseio.com',
+    databaseURL: 'https://cohousematch-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'cohousematch.firebasestorage.app',
+    iosClientId: '242037756353-hc8j1mo3b3dhcnacis44v7ienn1daao5.apps.googleusercontent.com',
     iosBundleId: 'com.example.cohouseMatch',
   );
 
@@ -86,8 +88,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '242037756353',
     projectId: 'cohousematch',
     authDomain: 'cohousematch.firebaseapp.com',
-    databaseURL: 'https://cohousematch.firebaseio.com',
+    databaseURL: 'https://cohousematch-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'cohousematch.firebasestorage.app',
     measurementId: 'G-NY365T9FQ1',
   );
+
 }
