@@ -112,10 +112,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 25,
-                                  backgroundImage: chatPartner?.photoUrl != null
-                                      ? NetworkImage(chatPartner!.photoUrl!)
+                                  backgroundImage: chatPartner.photoUrl != null
+                                      ? NetworkImage(chatPartner.photoUrl!)
                                       : null,
-                                  child: chatPartner?.photoUrl == null
+                                  child: chatPartner.photoUrl == null
                                       ? const Icon(Icons.person)
                                       : null,
                                 ),
@@ -137,15 +137,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
                             );
                           },
                         ),
-                        title: Text(chatPartner?.name ?? 'No Name'),
-                        subtitle: Text(chatPartner?.email ?? 'No email'),
+                        title: Text(chatPartner.name ?? 'No Name'),
+                        subtitle: Text(chatPartner.email ?? 'No email'),
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => ChatScreen(
                                 chatRoomId: chatRoomId,
-                                chatTitle: chatPartner?.name ?? 'Chat',
+                                chatTitle: chatPartner.name ?? 'Chat',
                                 memberIds: [currentUser.uid, chatPartnerId],
                               ),
                             ),

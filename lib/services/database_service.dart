@@ -3,45 +3,29 @@ import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/match.dart';
 import 'package:cohouse_match/models/review.dart';
-import 'package:cohouse_match/services/presence_service.dart'; // Import PresenceService
-
+import 'package:cohouse_match/services/presence_service.dart';
 class DatabaseService {
   final String? uid;
   DatabaseService({this.uid});
 
-  // collection reference
-  final CollectionReference userCollection = FirebaseFirestore.instance
-      .collection('users');
-  final CollectionReference messagesCollection = FirebaseFirestore.instance
-      .collection('messages');
-  final CollectionReference matchesCollection = FirebaseFirestore.instance
-      .collection('matches');
+  final CollectionReference userCollection = FirebaseFirestore.instance.collection('users');
+  final CollectionReference messagesCollection = FirebaseFirestore.instance.collection('messages');
+  final CollectionReference matchesCollection = FirebaseFirestore.instance.collection('matches');
 
   // Add a review for a user
   Future<void> addReview(String targetUserId, Review review) async {
-    // A review document is created inside the 'reviews' subcollection of the target user
-    await userCollection
-        .doc(targetUserId)
-        .collection('reviews')
-        .add(review.toMap());
+    await userCollection.doc(targetUserId).collection('reviews').add(review.toMap());
   }
 
   // Get all reviews for a user
   Stream<List<Review>> getReviews(String targetUserId) {
-    return userCollection
-        .doc(targetUserId)
-        .collection('reviews')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Review.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+    return userCollection.doc(targetUserId).collection('reviews').orderBy('timestamp', descending: true)
+        .snapshots().map((snapshot) => snapshot.docs.map((doc) => Review.fromMap(doc.data(), doc.id)).toList());
   }
 
-  Future<void> updateUserData(
-    String email,
+  // UPDATED METHOD for location data
+  Future<void> updateUserData({
+    required String email,
     String? name,
     String? bio,
     String? photoUrl,
@@ -49,69 +33,52 @@ class DatabaseService {
     List<String>? lifestyleDetails,
     double? budget,
     String? location,
+    GeoPoint? coordinates, // NEW: Accept GeoPoint coordinates
     String? gender,
     int? age,
-  ) async {
-    // Create a base map with email which is required
+  }) async {
     Map<String, dynamic> userData = {'email': email};
 
-    // Add other fields only if they're not null
     if (name != null) userData['name'] = name;
     if (bio != null) userData['bio'] = bio;
     if (photoUrl != null) userData['photoUrl'] = photoUrl;
     if (personalityTags != null) userData['personalityTags'] = personalityTags;
-    if (lifestyleDetails != null) {
-      userData['lifestyleDetails'] = lifestyleDetails;
-    }
+    if (lifestyleDetails != null) userData['lifestyleDetails'] = lifestyleDetails;
     if (budget != null) userData['budget'] = budget;
-    if (location != null) userData['location'] = location;
+    if (location != null) userData['location'] = location; // The display name
     if (gender != null) userData['gender'] = gender;
     if (age != null) userData['age'] = age;
+
+    if (coordinates != null) {
+      userData['coordinates'] = coordinates;
+    }
 
     return await userCollection.doc(uid).set(userData, SetOptions(merge: true));
   }
 
-  // user data from snapshots
-  Future<UserData?> _userDataFromSnapshot(DocumentSnapshot snapshot) async {
+  // user data from snapshots - CLEANED UP
+  UserData? _userDataFromSnapshot(DocumentSnapshot snapshot) {
     if (!snapshot.exists || snapshot.data() == null) {
       return null;
     }
-    Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-    UserData userData = UserData.fromMap(data, uid!);
-
-    // Fetch isOnline status from Realtime Database
-    bool isOnline = await PresenceService().getPresenceStream(uid!).first;
-    userData.isOnline = isOnline;
-
-    return userData;
+    return UserData.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
   }
 
-  // get user doc stream for the current uid
+  // get user doc stream for the current uid - CLEANED UP
   Stream<UserData?> get userData {
-    return userCollection.doc(uid).snapshots().asyncMap(_userDataFromSnapshot);
+    return userCollection.doc(uid).snapshots().map(_userDataFromSnapshot);
   }
 
-  // get user doc stream for a specific uid
+  // get user doc stream for a specific uid - CLEANED UP
   Stream<UserData?> userDataFromUid(String targetUid) {
-    return userCollection.doc(targetUid).snapshots().asyncMap((snapshot) async {
-      if (!snapshot.exists || snapshot.data() == null) {
-        return null; // User does not exist, emit null immediately
+    return userCollection.doc(targetUid).snapshots().map((snapshot) {
+      if (!snapshot.exists) {
+        return null;
       }
-      Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-      UserData userData = UserData.fromMap(data, targetUid);
-
-      // Fetch isOnline status from Realtime Database with a timeout
-      bool isOnline = await PresenceService().getPresenceStream(targetUid).first.timeout(const Duration(seconds: 5), onTimeout: () {
-        print('Timeout fetching presence for user $targetUid');
-        return false; // Default to offline on timeout
-      });
-      userData.isOnline = isOnline;
-      print('User ${targetUid} is online: ${isOnline}'); // Added log
-
-      return userData;
+      return UserData.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
     });
   }
-
+  
   // NEW: Send message in any chat room (individual or group)
   Future<void> sendMessageInChat(
     String chatRoomId,

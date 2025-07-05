@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 class UserData {
   final String uid;
   final String email;
@@ -7,7 +8,8 @@ class UserData {
   List<String>? personalityTags;
   List<String>? lifestyleDetails;
   double? budget;
-  String? location;
+  String? location; // For display name e.g., "Brooklyn, NY"
+  GeoPoint? coordinates; // For GeoPoint coordinates
   String? gender;
   int? age;
   List<String>? fcmTokens;
@@ -22,8 +24,9 @@ class UserData {
     this.lifestyleDetails,
     this.budget,
     this.location,
-    this.gender,
+    this.coordinates,
     this.age,
+    this.gender,
     this.fcmTokens,
     this.isOnline, // Add this line
   });
@@ -44,6 +47,7 @@ class UserData {
           : [],
       budget: data['budget']?.toDouble(),
       location: data['location'],
+      coordinates: data['coordinates'] as GeoPoint?,
       gender: data['gender'],
       age: data['age'],
       fcmTokens: data['fcmTokens'] != null
@@ -64,6 +68,7 @@ class UserData {
       'lifestyleDetails': lifestyleDetails,
       'budget': budget,
       'location': location,
+      'coordinates': coordinates, // For geohash and geopoint
       'gender': gender,
       'age': age,
       'fcmTokens': fcmTokens,
@@ -73,14 +78,14 @@ class UserData {
 
   bool get isProfileComplete {
     return (name?.isNotEmpty ?? false) &&
-           (bio?.isNotEmpty ?? false) &&
-           (photoUrl?.isNotEmpty ?? false) &&
-           (personalityTags?.isNotEmpty ?? false) &&
-           (lifestyleDetails?.isNotEmpty ?? false) &&
-           (budget != null && budget! > 0) &&
-           (location?.isNotEmpty ?? false) &&
-           (gender?.isNotEmpty ?? false) &&
-           (age != null && age! > 0);
+        (bio?.isNotEmpty ?? false) &&
+        (photoUrl?.isNotEmpty ?? false) &&
+        (personalityTags?.isNotEmpty ?? false) &&
+        (lifestyleDetails?.isNotEmpty ?? false) &&
+        (budget != null && budget! > 0) &&
+        (location?.isNotEmpty ?? false) &&
+        (coordinates != null) &&
+        (gender?.isNotEmpty ?? false) &&
+        (age != null && age! > 0);
   }
-
 }

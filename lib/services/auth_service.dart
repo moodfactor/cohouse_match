@@ -40,16 +40,16 @@ class AuthService {
       // Initialize user data for new users
       if (result.user != null) {
         await DatabaseService(uid: result.user!.uid).updateUserData(
-          email,
-          null, // name
-          null, // bio
-          null, // photoUrl
-          null, // personalityTags
-          null, // lifestyleDetails
-          null, // budget
-          null, // location
-          null, // gender
-          null, // age
+          email: email,
+          name: null, // name
+          bio: null, // bio
+          photoUrl: null, // photoUrl
+          personalityTags: null, // personalityTags
+          lifestyleDetails: null, // lifestyleDetails
+          budget: null, // budget
+          location: null, // location
+          gender: null, // gender
+          age: null, // age
         );
       }
       
@@ -101,16 +101,16 @@ class AuthService {
         final user = _auth.currentUser;
         if (user != null) {
           await DatabaseService(uid: uid).updateUserData(
-            user.email ?? '',
-            user.displayName, // Use Google display name if available
-            null, // bio
-            user.photoURL, // Use Google photo URL if available
-            null, // personalityTags
-            null, // lifestyleDetails
-            null, // budget
-            null, // location
-            null, // gender
-            null, // age
+            email: user.email ?? '',
+            name: user.displayName, // Use Google display name if available
+            bio: null, // bio
+            photoUrl: user.photoURL, // Use Google photo URL if available
+            personalityTags: null, // personalityTags
+            lifestyleDetails: null, // lifestyleDetails
+            budget: null, // budget
+            location: null, // location
+            gender: null, // gender
+            age: null, // age
           );
         }
       }

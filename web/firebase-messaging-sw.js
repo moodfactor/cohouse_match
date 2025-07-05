@@ -2,7 +2,7 @@ importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAX836hfK3oL1clxNC4WFJQifQ53_oRjV0",
+  apiKey: "YOUR_FIREBASE_API_KEY",
   authDomain: "cohousematch.firebaseapp.com",
   projectId: "cohousematch",
   storageBucket: "cohousematch.firebasestorage.app",

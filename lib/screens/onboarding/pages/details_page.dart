@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cohouse_match/screens/location_picker_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class DetailsPage extends StatelessWidget {
   final VoidCallback onNext;
@@ -6,6 +9,7 @@ class DetailsPage extends StatelessWidget {
   final TextEditingController locationController;
   final TextEditingController budgetController;
   final Function(String?) onGenderChanged;
+  final Function(String address, GeoPoint coordinates) onLocationSelected;
 
   const DetailsPage({
     super.key,
@@ -14,6 +18,7 @@ class DetailsPage extends StatelessWidget {
     required this.locationController,
     required this.budgetController,
     required this.onGenderChanged,
+    required this.onLocationSelected,
   });
 
   @override
@@ -34,10 +39,26 @@ class DetailsPage extends StatelessWidget {
             validator: (val) => (val == null || val.isEmpty) ? 'Please enter a bio' : null,
           ),
           const SizedBox(height: 20),
-          TextFormField(
-            controller: locationController,
-            decoration: const InputDecoration(labelText: 'Preferred Location (e.g., City, State)'),
-            validator: (val) => (val == null || val.isEmpty) ? 'Please enter a location' : null,
+          // Location input using ListTile to navigate to LocationPickerScreen
+          ListTile(
+            leading: const Icon(Icons.location_on),
+            title: Text(locationController.text.isEmpty
+                ? 'Select your location'
+                : locationController.text),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LocationPickerScreen()),
+              );
+              print("Result from LocationPickerScreen: $result");
+              if (result != null && result is Map<String, dynamic>) {
+                final String address = result['address'];
+                final LatLng coords = result['coordinates'];
+                onLocationSelected(address, GeoPoint(coords.latitude, coords.longitude));
+                locationController.text = address; // Update the text controller for display
+              }
+            },
           ),
           const SizedBox(height: 20),
           TextFormField(

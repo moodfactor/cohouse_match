@@ -1,6 +1,7 @@
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:cohouse_match/screens/onboarding/pages/welcome_page.dart';
 import 'package:cohouse_match/screens/onboarding/pages/photo_page.dart';
@@ -33,6 +34,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _budgetController = TextEditingController();
   String? _selectedGender;
+  GeoPoint? _locationCoordinates;
 
   // Data for PhotoPage and TagsPage
   String? _photoUrl;
@@ -64,39 +66,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
 
     // Collect all data directly from controllers and state variables
-    final String? name = _nameController.text.trim().isEmpty ? null : _nameController.text.trim();
+    final String trimmedName = _nameController.text.trim();
+    final String? name = trimmedName.isEmpty ? null : trimmedName;
     final int? age = int.tryParse(_ageController.text.trim());
     final String? bio = _bioController.text.trim().isEmpty ? null : _bioController.text.trim();
     final String? location = _locationController.text.trim().isEmpty ? null : _locationController.text.trim();
     final double? budget = double.tryParse(_budgetController.text.trim());
 
     // Validate required fields before saving
-    if (name == null) {
-      _showErrorSnackbar('Please enter your name');
-      return;
-    }
-    if (age == null || age <= 0) {
-      _showErrorSnackbar('Please enter a valid age');
-      return;
-    }
     if (_photoUrl == null) {
       _showErrorSnackbar('Please upload a profile photo');
       return;
     }
-    if (bio == null) {
-      _showErrorSnackbar('Please tell us about yourself');
-      return;
-    }
-    if (location == null) {
-      _showErrorSnackbar('Please enter your location');
-      return;
-    }
-    if (budget == null || budget <= 0) {
-      _showErrorSnackbar('Please enter a valid budget');
-      return;
-    }
-    if (_selectedGender == null) {
-      _showErrorSnackbar('Please select your gender');
+    if (_locationCoordinates == null) {
+      _showErrorSnackbar('Please set your location on the map');
       return;
     }
     if (_personalityTags.isEmpty) {
@@ -110,16 +93,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     try {
       await DatabaseService(uid: widget.firebaseUser.uid).updateUserData(
-        widget.firebaseUser.email!,
-        name,
-        bio,
-        _photoUrl,
-        _personalityTags,
-        _lifestyleDetails,
-        budget,
-        location,
-        _selectedGender,
-        age,
+        email: widget.firebaseUser.email!,
+        name: name,
+        bio: bio,
+        photoUrl: _photoUrl,
+        personalityTags: _personalityTags,
+        lifestyleDetails: _lifestyleDetails,
+        budget: budget,
+        location: location,
+        coordinates: _locationCoordinates,
+        gender: _selectedGender,
+        age: age,
       );
       // The Wrapper will automatically detect the completed profile and navigate to HomeWrapper
     } catch (e) {
@@ -150,6 +134,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         locationController: _locationController,
         budgetController: _budgetController,
         onGenderChanged: (gender) => setState(() => _selectedGender = gender),
+        onLocationSelected: (address, coordinates) {
+          setState(() {
+            _locationController.text = address;
+            _locationCoordinates = coordinates;
+          });
+        },
         onNext: _nextPage,
       ),
       TagsPage(
