@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cohouse_match/models/review.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
+import 'package:cohouse_match/services/location_service.dart';
+import 'package:cohouse_match/widgets/static_map_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -55,6 +57,8 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
               _buildProfileHeader(user),
               const SizedBox(height: 20),
               _buildInfoSection(user),
+              const SizedBox(height: 20),
+              _buildLocationSection(user),
               const Divider(height: 40, thickness: 1, indent: 20, endIndent: 20),
               _buildReviewsSection(widget.userId),
             ],
@@ -168,6 +172,47 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
           )).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildLocationSection(UserData user) {
+    final displayLocation = LocationService.getDisplayLocation(user);
+    if (displayLocation == null) return const SizedBox.shrink();
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Location',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 12),
+          StaticMapWidget(
+            coordinates: displayLocation,
+            width: double.infinity,
+            height: 200,
+            zoom: 13,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          if (user.location != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    user.location!,
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 

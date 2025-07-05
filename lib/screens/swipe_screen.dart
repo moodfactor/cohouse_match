@@ -231,34 +231,121 @@ class _SwipeScreenState extends State<SwipeScreen> {
         return;
       }
 
-      // Show match score and explanation in an AlertDialog
+      // Show enhanced match analysis dialog
       if (mounted) {
         await showDialog(
           context: context,
           builder: (BuildContext context) {
+            final score = matchResult['score'] ?? 0;
+            final summary = matchResult['summary'] ?? 'No analysis available';
+            final strengths = List<String>.from(matchResult['strengths'] ?? []);
+            final concerns = List<String>.from(matchResult['concerns'] ?? []);
+            final budgetMatch = matchResult['budgetMatch'] ?? 0;
+            final lifestyleMatch = matchResult['lifestyleMatch'] ?? 0;
+            final personalityMatch = matchResult['personalityMatch'] ?? 0;
+            
             return AlertDialog(
-              title: Text('You Matched with ${swipedUser.name}!'),
+              title: Row(
+                children: [
+                  const Icon(Icons.favorite, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Matched with ${swipedUser.name}!')),
+                ],
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Gemini's Compatibility Analysis:",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    // Overall score
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _getScoreColor(score).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _getScoreColor(score)),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '$score%',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: _getScoreColor(score),
+                            ),
+                          ),
+                          Text(
+                            'Compatibility Score',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            summary,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    Text('Score: ${matchResult['score'] ?? 'N/A'} / 100'),
-                    const SizedBox(height: 10),
-                    Text(
-                      matchResult['explanation'] ??
-                          'Could not get match explanation.',
+                    const SizedBox(height: 16),
+                    
+                    // Category scores
+                    Row(
+                      children: [
+                        Expanded(child: _buildScoreChip('Budget', budgetMatch)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _buildScoreChip('Lifestyle', lifestyleMatch)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _buildScoreChip('Personality', personalityMatch)),
+                      ],
                     ),
+                    const SizedBox(height: 16),
+                    
+                    // Strengths
+                    if (strengths.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green[600], size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Strengths', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...strengths.map((strength) => Padding(
+                        padding: const EdgeInsets.only(left: 28, bottom: 4),
+                        child: Text('• $strength'),
+                      )),
+                      const SizedBox(height: 12),
+                    ],
+                    
+                    // Concerns
+                    if (concerns.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.orange[600], size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Things to Consider', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...concerns.map((concern) => Padding(
+                        padding: const EdgeInsets.only(left: 28, bottom: 4),
+                        child: Text('• $concern'),
+                      )),
+                    ],
                   ],
                 ),
               ),
-              actions: <Widget>[
+              actions: [
                 TextButton(
+                  child: const Text('Start Chatting'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // TODO: Navigate to chat
+                  },
+                ),
+                ElevatedButton(
                   child: const Text('Awesome!'),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
@@ -701,6 +788,41 @@ class _SwipeScreenState extends State<SwipeScreen> {
           Icon(icon, color: Colors.white, size: 16),
           const SizedBox(width: 4),
           Text(text, style: const TextStyle(color: Colors.white)),
+        ],
+      ),
+    );
+  }
+  
+  Color _getScoreColor(int score) {
+    if (score >= 80) return Colors.green;
+    if (score >= 60) return Colors.orange;
+    return Colors.red;
+  }
+  
+  Widget _buildScoreChip(String label, int score) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: _getScoreColor(score).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _getScoreColor(score).withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '$score%',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _getScoreColor(score),
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
         ],
       ),
     );

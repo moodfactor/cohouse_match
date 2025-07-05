@@ -14,40 +14,46 @@ class GeminiService {
 
   Future<Map<String, dynamic>?> getMatchScore(
       UserData currentUser, UserData potentialMatch) async {
-    // Updated prompt for clarity and to enforce JSON output.
     final prompt = '''
-Analyze the compatibility between these two user profiles and provide a response in JSON format.
+Analyze the compatibility between these two cohousing profiles for living together and provide detailed analysis in JSON format.
 
-**User 1 (Current User):**
+**User 1:**
 - **Name:** ${currentUser.name ?? 'N/A'}
 - **Bio:** ${currentUser.bio ?? 'N/A'}
-- **Personality Tags:** ${currentUser.personalityTags?.join(', ') ?? 'N/A'}
-- **Lifestyle Details:** ${currentUser.lifestyleDetails?.join(', ') ?? 'N/A'}
-- **Budget:** ${currentUser.budget?.toString() ?? 'N/A'}
+- **Personality:** ${currentUser.personalityTags?.join(', ') ?? 'N/A'}
+- **Lifestyle:** ${currentUser.lifestyleDetails?.join(', ') ?? 'N/A'}
+- **Budget:** \$${currentUser.budget?.toString() ?? 'N/A'}/month
 - **Location:** ${currentUser.location ?? 'N/A'}
-- **Gender:** ${currentUser.gender ?? 'N/A'}
 - **Age:** ${currentUser.age?.toString() ?? 'N/A'}
 
-**User 2 (Potential Match):**
+**User 2:**
 - **Name:** ${potentialMatch.name ?? 'N/A'}
 - **Bio:** ${potentialMatch.bio ?? 'N/A'}
-- **Personality Tags:** ${potentialMatch.personalityTags?.join(', ') ?? 'N/A'}
-- **Lifestyle Details:** ${potentialMatch.lifestyleDetails?.join(', ') ?? 'N/A'}
-- **Budget:** ${potentialMatch.budget?.toString() ?? 'N/A'}
+- **Personality:** ${potentialMatch.personalityTags?.join(', ') ?? 'N/A'}
+- **Lifestyle:** ${potentialMatch.lifestyleDetails?.join(', ') ?? 'N/A'}
+- **Budget:** \$${potentialMatch.budget?.toString() ?? 'N/A'}/month
 - **Location:** ${potentialMatch.location ?? 'N/A'}
-- **Gender:** ${potentialMatch.gender ?? 'N/A'}
 - **Age:** ${potentialMatch.age?.toString() ?? 'N/A'}
 
-**Instructions:**
-Return a single, valid JSON object with two keys:
-1.  `"score"`: An integer between 0 and 100 representing the compatibility.
-2.  `"explanation"`: A concise, single-line string (under 200 characters) that summarizes the key reasons for the score. Do not include newlines or other control characters in the explanation string.
+Analyze compatibility for cohousing and return JSON with:
+- `"score"`: Overall compatibility (0-100)
+- `"summary"`: Brief compatibility summary (max 150 chars)
+- `"strengths"`: Array of 2-3 compatibility strengths
+- `"concerns"`: Array of 1-2 potential concerns
+- `"budgetMatch"`: Budget compatibility score (0-100)
+- `"lifestyleMatch"`: Lifestyle compatibility score (0-100)
+- `"personalityMatch"`: Personality compatibility score (0-100)
 
-**Example Response:**
+**Example:**
 ```json
 {
-  "score": 75,
-  "explanation": "Good compatibility in lifestyle and budget, but potential differences in social energy."
+  "score": 82,
+  "summary": "Strong match with aligned budgets and complementary personalities",
+  "strengths": ["Similar budget ranges", "Complementary social styles", "Shared lifestyle values"],
+  "concerns": ["Different sleep schedules"],
+  "budgetMatch": 95,
+  "lifestyleMatch": 78,
+  "personalityMatch": 85
 }
 ```
 ''';
@@ -87,7 +93,9 @@ Return a single, valid JSON object with two keys:
         return null;
       }
 
-      if (result.containsKey('score') && result.containsKey('explanation')) {
+      // Validate required fields
+      final requiredFields = ['score', 'summary', 'strengths', 'concerns'];
+      if (requiredFields.every((field) => result.containsKey(field))) {
         return result;
       } else {
         print('Invalid JSON response from Gemini. Missing keys: $text');
