@@ -4,6 +4,7 @@ import 'package:cohouse_match/screens/filter_screen.dart';
 import 'package:cohouse_match/widgets/card_skeleton_loader.dart';
 import 'package:cohouse_match/widgets/empty_state_widget.dart';
 import 'package:cohouse_match/widgets/multi_select_chip.dart';
+import 'package:cohouse_match/widgets/static_map_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:cohouse_match/services/database_service.dart';
@@ -641,7 +642,31 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                
+                // Location map preview
+                if (userData.coordinates != null) ...[
+                  Container(
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: StaticMapWidget(
+                        coordinates: userData.coordinates,
+                        width: double.infinity,
+                        height: 80,
+                        zoom: 15,
+                        showLocationIcon: false,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                
                 Wrap(
                   spacing: 6.0,
                   runSpacing: 6.0,

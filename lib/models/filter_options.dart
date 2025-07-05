@@ -9,6 +9,8 @@ class FilterOptions {
   String? gender;
   List<String> lifestyleDetails;
   List<String> personalityTags;
+  double? maxDistance; // Maximum distance in miles
+  bool? showOnlineOnly; // Show only online users
 
   FilterOptions({
     this.budgetRange,
@@ -17,6 +19,8 @@ class FilterOptions {
     this.gender,
     required this.lifestyleDetails,
     required this.personalityTags,
+    this.maxDistance,
+    this.showOnlineOnly,
   });
 
   // A factory method to create default options
@@ -28,6 +32,8 @@ class FilterOptions {
       gender: null,
       lifestyleDetails: [],
       personalityTags: [],
+      maxDistance: 25.0, // Default 25 miles
+      showOnlineOnly: false,
     );
   }
 
@@ -40,6 +46,8 @@ class FilterOptions {
       gender: null,
       lifestyleDetails: [],
       personalityTags: [],
+      maxDistance: null,
+      showOnlineOnly: false,
     );
   }
 }

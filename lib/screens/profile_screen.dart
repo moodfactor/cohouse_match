@@ -9,6 +9,7 @@ import 'package:cohouse_match/models/user.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cohouse_match/widgets/multi_select_chip.dart';
+import 'package:cohouse_match/widgets/static_map_widget.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -250,23 +251,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildTextField(controller: budgetController, label: 'Budget (\$)', icon: Icons.attach_money, keyboardType: TextInputType.number, validator: (val) => (val?.isEmpty ?? true) ? 'Required' : null),
                 const SizedBox(height: 20),
                 
-                // --- REPLACEMENT FOR LOCATION TEXT FIELD ---
+                // --- LOCATION SECTION WITH STATIC MAP ---
                 _buildSectionHeader("Your Area"),
                 const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey.shade50,
-                  ),
-                  child: ListTile(
-                    leading: const Icon(Icons.map_outlined),
-                    title: Text(_locationName ?? "Set Location on Map"),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: _openLocationPicker,
-                  ),
+                InteractiveStaticMapWidget(
+                  coordinates: _locationCoordinates,
+                  locationName: _locationName,
+                  width: double.infinity,
+                  height: 200,
+                  zoom: 14,
+                  onTap: _openLocationPicker,
                 ),
-                // --- END OF REPLACEMENT ---
+                if (_locationName != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.blue[600], size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _locationName!,
+                            style: TextStyle(
+                              color: Colors.blue[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _openLocationPicker,
+                          child: const Text('Change'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                // --- END OF LOCATION SECTION ---
 
                 const SizedBox(height: 32),
                 _buildSectionHeader('Personality Tags'),

@@ -14,6 +14,11 @@ class UserData {
   int? age;
   List<String>? fcmTokens;
   bool? isOnline; // Add this line
+  
+  // Location Privacy Settings
+  bool? showExactLocation; // Show exact location vs approximate area
+  double? locationRadius; // Radius in miles for location privacy
+  bool? showOnMap; // Whether to appear on map view
   UserData({
     required this.uid,
     required this.email,
@@ -28,7 +33,10 @@ class UserData {
     this.age,
     this.gender,
     this.fcmTokens,
-    this.isOnline, // Add this line
+    this.isOnline,
+    this.showExactLocation,
+    this.locationRadius,
+    this.showOnMap,
   });
 
   // Factory constructor to create a UserData object from a map (Firestore document)
@@ -53,7 +61,10 @@ class UserData {
       fcmTokens: data['fcmTokens'] != null
           ? List<String>.from(data['fcmTokens'])
           : [],
-      isOnline: data['isOnline'], // Add this line
+      isOnline: data['isOnline'],
+      showExactLocation: data['showExactLocation'] ?? true,
+      locationRadius: data['locationRadius']?.toDouble() ?? 5.0,
+      showOnMap: data['showOnMap'] ?? true,
     );
   }
 
@@ -72,7 +83,10 @@ class UserData {
       'gender': gender,
       'age': age,
       'fcmTokens': fcmTokens,
-      'isOnline': isOnline, // Add this line
+      'isOnline': isOnline,
+      'showExactLocation': showExactLocation,
+      'locationRadius': locationRadius,
+      'showOnMap': showOnMap,
     };
   }
 
