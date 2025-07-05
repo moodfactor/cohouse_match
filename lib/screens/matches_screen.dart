@@ -15,9 +15,8 @@ class MatchesScreen extends StatefulWidget {
 
 class _MatchesScreenState extends State<MatchesScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
 
-    @override
+  @override
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser;
 
@@ -26,9 +25,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your Matches'),
-      ),
+      appBar: AppBar(title: const Text('Your Matches')),
       body: StreamBuilder<List<Match>>(
         stream: DatabaseService().getMatches(currentUser.uid),
         builder: (context, AsyncSnapshot<List<Match>> snapshot) {
@@ -43,7 +40,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
             return const EmptyStateWidget(
               icon: Icons.favorite_border,
               title: "No Matches Yet",
-              subtitle: "Your new matches will appear here once you swipe right on someone!",
+              subtitle:
+                  "Your new matches will appear here once you swipe right on someone!",
             );
           }
 
@@ -55,7 +53,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
               final match = matches[index];
 
               if (match.type == 'group') {
-                final groupMembersIds = match.members.where((uid) => uid != currentUser.uid).toList();
+                final groupMembersIds = match.members
+                    .where((uid) => uid != currentUser.uid)
+                    .toList();
                 return Card(
                   margin: const EdgeInsets.all(8.0),
                   child: Padding(
@@ -65,29 +65,47 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       children: [
                         const Text(
                           'Group Match',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        Text('Match Date: ${match.timestamp.toLocal().toString().split(' ')[0]}'),
+                        Text(
+                          'Match Date: ${match.timestamp.toLocal().toString().split(' ')[0]}',
+                        ),
                         const SizedBox(height: 8),
-                        const Text('Members:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Members:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         ...groupMembersIds.map((memberId) {
                           return FutureBuilder<UserData?>(
-                            future: DatabaseService().userDataFromUid(memberId).first,
+                            future: DatabaseService()
+                                .userDataFromUid(memberId)
+                                .first,
                             builder: (context, userSnapshot) {
-                              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                              if (userSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
                                 return const Text('Loading member...');
                               }
                               if (userSnapshot.hasError) {
-                                return Text('Error loading member: ${userSnapshot.error}');
+                                return Text(
+                                  'Error loading member: ${userSnapshot.error}',
+                                );
                               }
                               if (!userSnapshot.hasData) {
                                 return const Text('Member not found');
                               }
                               final member = userSnapshot.data!;
                               return Padding(
-                                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
-                                child: Text('- ${member.name ?? 'Unknown'} (${member.email})'),
+                                padding: const EdgeInsets.only(
+                                  left: 8.0,
+                                  top: 4.0,
+                                ),
+                                child: Text(
+                                  '- ${member.name ?? 'Unknown'} (${member.email})',
+                                ),
                               );
                             },
                           );
@@ -96,49 +114,73 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     ),
                   ),
                 );
-  } else {
-    // --- THIS IS THE PART TO MODIFY FOR INDIVIDUAL MATCHES ---
-    final matchedUserId = match.user1Id == currentUser.uid ? match.user2Id : match.user1Id;
-    return FutureBuilder<UserData?>(
-      future: DatabaseService().userDataFromUid(matchedUserId).first,
-      builder: (context, userSnapshot) {
-        if (userSnapshot.connectionState == ConnectionState.waiting) {
-          return const ListTile(title: Text('Loading user data...'));
-        }
-        if (!userSnapshot.hasData || userSnapshot.data == null) {
-          return const ListTile(title: Text('Matched user not found or data unavailable'));
-        }
+              } else {
+                // --- THIS IS THE PART TO MODIFY FOR INDIVIDUAL MATCHES ---
+                final matchedUserId = match.user1Id == currentUser.uid
+                    ? match.user2Id
+                    : match.user1Id;
+                return FutureBuilder<UserData?>(
+                  future: DatabaseService()
+                      .userDataFromUid(matchedUserId)
+                      .first,
+                  builder: (context, userSnapshot) {
+                    if (userSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const ListTile(
+                        title: Text('Loading user data...'),
+                      );
+                    }
+                    if (!userSnapshot.hasData || userSnapshot.data == null) {
+                      return const ListTile(
+                        title: Text(
+                          'Matched user not found or data unavailable',
+                        ),
+                      );
+                    }
 
-        final matchedUser = userSnapshot.data!;
+                    final matchedUser = userSnapshot.data!;
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundImage: matchedUser.photoUrl != null
-                  ? NetworkImage(matchedUser.photoUrl!)
-                  : null,
-              child: matchedUser.photoUrl == null ? const Icon(Icons.person) : null,
-            ),
-            title: Text(matchedUser.name ?? 'Unknown User', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(matchedUser.bio ?? 'No bio available.', maxLines: 1, overflow: TextOverflow.ellipsis,),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ViewProfileScreen(userId: matchedUserId),
-                ),
-              );
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: matchedUser.photoUrl != null
+                              ? NetworkImage(matchedUser.photoUrl!)
+                              : null,
+                          child: matchedUser.photoUrl == null
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        title: Text(
+                          matchedUser.name ?? 'Unknown User',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          matchedUser.bio ?? 'No bio available.',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ViewProfileScreen(userId: matchedUserId),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                );
+              }
             },
-          ),
-        );
-      },
-    );
-  }
-},
           );
         },
       ),
     );
-  } 
+  }
 }

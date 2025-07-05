@@ -104,7 +104,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
         return;
       }
       
-      if (placemarks != null && placemarks.isNotEmpty) {
+      if (placemarks.isNotEmpty) {
         print("Found ${placemarks.length} placemarks");
         
         // Try to find the best placemark with available data
