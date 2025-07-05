@@ -25,7 +25,6 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final PresenceService _presenceService = PresenceService();
   late final Stream<User?> _authStream;
