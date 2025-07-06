@@ -1,5 +1,8 @@
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onCall} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+
+admin.initializeApp();
 
 export const onNewMatch = onDocumentCreated(
   "matches/{matchId}", async (event) => {
@@ -134,3 +137,105 @@ export const onNewMessage = onDocumentCreated(
       console.error("Error in onNewMessage function:", error);
     }
   });
+
+export const updateAllUserProfiles = onCall(async (request) => {
+  // IMPORTANT: This function is for demonstration and development purposes only.
+  // In a production environment, you should implement proper authentication
+  // and authorization checks to ensure only authorized users can trigger this
+  // function. For example, check if request.auth.token.admin === true
+
+  console.log("Starting updateAllUserProfiles function...");
+
+  const usersRef = admin.firestore().collection("users");
+  const snapshot = await usersRef.get();
+
+  if (snapshot.empty) {
+    console.log("No users found.");
+    return {success: true, message: "No users to update."};
+  }
+
+  const photoUrls: string[] = request.data.photoUrls || [];
+  if (photoUrls.length === 0) {
+    return {success: false, message: "No photo URLs provided."};
+  }
+
+  const batch = admin.firestore().batch();
+  let updatedCount = 0;
+  let photoUrlIndex = 0;
+
+  for (const doc of snapshot.docs) {
+    const uid = doc.id;
+
+    // Generate artificial data
+    const newName = `User ${Math.random().toString(36).substring(7)}`;
+    const newBio = `This is an artificially generated bio for user ${uid}. ` +
+                   `They are interested in co-housing and community living.`;
+
+    // Assign photoUrl in a round-robin fashion
+    const newPhotoUrl = photoUrls[photoUrlIndex];
+    photoUrlIndex = (photoUrlIndex + 1) % photoUrls.length;
+
+    batch.update(doc.ref, {
+      name: newName,
+      bio: newBio,
+      photoUrl: newPhotoUrl,
+    });
+    updatedCount++;
+  }
+
+  await batch.commit();
+  console.log(`Successfully updated ${updatedCount} user profiles.`);
+
+  return {success: true, message: `Updated ${updatedCount} user profiles.`};
+});
+
+export const deleteProfileImages = onCall(async () => {
+  console.log("Starting deleteProfileImages function...");
+
+  const usersRef = admin.firestore().collection("users");
+  const snapshot = await usersRef.get();
+
+  if (snapshot.empty) {
+    console.log("No users found to delete images for.");
+    return {success: true, message: "No users to process."};
+  }
+
+  const storage = admin.storage();
+  const bucket = storage.bucket(); // Gets the default bucket
+
+  let deletedCount = 0;
+  const batch = admin.firestore().batch();
+
+  for (const doc of snapshot.docs) {
+    const userData = doc.data();
+    const uid = doc.id;
+    const photoUrl = userData.photoUrl;
+
+    if (photoUrl && typeof photoUrl === "string" &&
+        photoUrl.includes("firebasestorage.googleapis.com")) {
+      try {
+        // Extract the path from the Firebase Storage URL
+        // Example URL: https://firebasestorage.googleapis.com/v0/b/your-project.appspot.com/o/images%2Fprofile%2Fuser123.jpg?alt=media...
+        const url = new URL(photoUrl);
+        const path = decodeURIComponent(url.pathname.split("/o/")[1].split("?")[0]);
+
+        console.log(`Attempting to delete image: ${path} for user: ${uid}`);
+        await bucket.file(path).delete();
+        console.log(`Successfully deleted image: ${path}`);
+
+        batch.update(doc.ref, {photoUrl: null}); // Clear photoUrl in Firestore
+        deletedCount++;
+      } catch (error) {
+        console.error(`Failed to delete image for user ${uid} (${photoUrl}):`,
+          error);
+      }
+    } else if (photoUrl) {
+      console.log(`Skipping non-Firebase Storage URL for user ${uid}: ${photoUrl}`);
+    }
+  }
+
+  await batch.commit();
+  console.log(`Successfully processed and deleted ${deletedCount} profile images.`);
+
+  return {success: true, message: `Deleted ${deletedCount} profile images.`};
+});

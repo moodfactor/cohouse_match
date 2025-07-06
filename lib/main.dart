@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cohouse_match/services/auth_service.dart';
 import 'package:cohouse_match/screens/wrapper.dart';
+import 'package:cohouse_match/screens/admin_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,6 +86,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           primarySwatch: Colors.blue,
         ),
         home: const Wrapper(),
+        routes: {
+          '/admin': (context) => AdminScreen(),
+        },
       ),
     );
   }

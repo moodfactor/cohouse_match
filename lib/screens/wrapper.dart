@@ -1,12 +1,14 @@
 import 'package:cohouse_match/screens/authenticate.dart';
 import 'package:cohouse_match/screens/home_wrapper.dart';
-import 'package:cohouse_match/screens/onboarding/onboarding_screen.dart'; // Keep this import
+import 'package:cohouse_match/screens/onboarding/onboarding_screen.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:cohouse_match/models/user.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:cohouse_match/services/notification_service.dart';
+import 'package:cohouse_match/screens/admin_screen.dart'; // Import AdminScreen
+import 'package:cohouse_match/screens/home_screen.dart'; // Import HomeScreen
 
 class Wrapper extends StatelessWidget {
   const Wrapper({super.key});
@@ -46,13 +48,15 @@ class Wrapper extends StatelessWidget {
           if (userSnapshot.hasData && userSnapshot.data != null) {
             final userData = userSnapshot.data!;
 
-            // Use the getter to check if the profile is complete
-            if (userData.isProfileComplete) {
-              // If complete, show the main app
-              return const HomeWrapper();
+            // Check if the user is an admin
+            if (userData.isAdmin ?? false) {
+              return AdminScreen(); // Direct to AdminScreen if admin
+            }
+            // If not admin, proceed with profile completion check
+            else if (userData.isProfileComplete) {
+              return const HomeScreen(); // Direct to HomeScreen if profile complete and not admin
             } else {
-              // If not complete, show the onboarding screen and PASS THE USER OBJECT
-              return OnboardingScreen(firebaseUser: user); 
+              return OnboardingScreen(firebaseUser: user); // Direct to Onboarding if profile not complete
             }
           } 
           

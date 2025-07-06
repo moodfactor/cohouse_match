@@ -19,6 +19,8 @@ class UserData {
   bool? showExactLocation; // Show exact location vs approximate area
   double? locationRadius; // Radius in miles for location privacy
   bool? showOnMap; // Whether to appear on map view
+  bool? isAdmin; // Add this line
+
   UserData({
     required this.uid,
     required this.email,
@@ -37,6 +39,7 @@ class UserData {
     this.showExactLocation,
     this.locationRadius,
     this.showOnMap,
+    this.isAdmin, // <--- ADD THIS LINE
   });
 
   // Factory constructor to create a UserData object from a map (Firestore document)
@@ -65,6 +68,7 @@ class UserData {
       showExactLocation: data['showExactLocation'] ?? true,
       locationRadius: data['locationRadius']?.toDouble() ?? 5.0,
       showOnMap: data['showOnMap'] ?? true,
+      isAdmin: data['isAdmin'] ?? false, // <--- ADD THIS LINE
     );
   }
 
@@ -87,6 +91,7 @@ class UserData {
       'showExactLocation': showExactLocation,
       'locationRadius': locationRadius,
       'showOnMap': showOnMap,
+      'isAdmin': isAdmin, // <--- ADD THIS LINE
     };
   }
 

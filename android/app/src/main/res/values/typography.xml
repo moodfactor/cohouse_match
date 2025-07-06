@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Typography for Display Large -->
+    <style name="TextAppearance.CohouseMatch.DisplayLarge" parent="TextAppearance.Material3.DisplayLarge">
+        <item name="fontFamily">sans-serif-light</item>
+        <item name="android:fontFamily">sans-serif-light</item>
+        <item name="android:textSize">57sp</item>
+    </style>
+
+    <!-- Typography for Display Medium -->
+    <style name="TextAppearance.CohouseMatch.DisplayMedium" parent="TextAppearance.Material3.DisplayMedium">
+        <item name="fontFamily">sans-serif-light</item>
+        <item name="android:fontFamily">sans-serif-light</item>
+        <item name="android:textSize">45sp</item>
+    </style>
+
+    <!-- Typography for Display Small -->
+    <style name="TextAppearance.CohouseMatch.DisplaySmall" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="fontFamily">sans-serif-light</item>
+        <item name="android:fontFamily">sans-serif-light</item>
+        <item name="android:textSize">36sp</item>
+    </style>
+
+    <!-- Typography for Headline Large -->
+    <style name="TextAppearance.CohouseMatch.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">32sp</item>
+    </style>
+
+    <!-- Typography for Headline Medium -->
+    <style name="TextAppearance.CohouseMatch.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">28sp</item>
+    </style>
+
+    <!-- Typography for Headline Small -->
+    <style name="TextAppearance.CohouseMatch.HeadlineSmall" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">24sp</item>
+    </style>
+
+    <!-- Typography for Title Large -->
+    <style name="TextAppearance.CohouseMatch.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">22sp</item>
+    </style>
+
+    <!-- Typography for Title Medium -->
+    <style name="TextAppearance.CohouseMatch.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Typography for Title Small -->
+    <style name="TextAppearance.CohouseMatch.TitleSmall" parent="TextAppearance.Material3.TitleSmall">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Typography for Body Large -->
+    <style name="TextAppearance.CohouseMatch.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Typography for Body Medium -->
+    <style name="TextAppearance.CohouseMatch.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Typography for Body Small -->
+    <style name="TextAppearance.CohouseMatch.BodySmall" parent="TextAppearance.Material3.BodySmall">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- Typography for Label Large -->
+    <style name="TextAppearance.CohouseMatch.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Typography for Label Medium -->
+    <style name="TextAppearance.CohouseMatch.LabelMedium" parent="TextAppearance.Material3.LabelMedium">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- Typography for Label Small -->
+    <style name="TextAppearance.CohouseMatch.LabelSmall" parent="TextAppearance.Material3.LabelSmall">
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+</resources>

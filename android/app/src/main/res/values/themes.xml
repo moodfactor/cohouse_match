@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CohouseMatch" parent="Theme.Material3.DayNight">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/md_theme_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_onPrimary</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/md_theme_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_onSecondary</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+
+        <!-- Typography -->
+        <item name="textAppearanceDisplayLarge">@style/TextAppearance.CohouseMatch.DisplayLarge</item>
+        <item name="textAppearanceDisplayMedium">@style/TextAppearance.CohouseMatch.DisplayMedium</item>
+        <item name="textAppearanceDisplaySmall">@style/TextAppearance.CohouseMatch.DisplaySmall</item>
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.CohouseMatch.HeadlineLarge</item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.CohouseMatch.HeadlineMedium</item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.CohouseMatch.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.CohouseMatch.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.CohouseMatch.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.CohouseMatch.TitleSmall</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.CohouseMatch.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.CohouseMatch.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.CohouseMatch.BodySmall</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.CohouseMatch.LabelLarge</item>
+        <item name="textAppearanceLabelMedium">@style/TextAppearance.CohouseMatch.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.CohouseMatch.LabelSmall</item>
+
+        <!-- Shape Appearance -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.CohouseMatch.SmallComponent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.CohouseMatch.MediumComponent</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.CohouseMatch.LargeComponent</item>
+        <!-- Customize your theme here. -->
+    </style>
+</resources>
