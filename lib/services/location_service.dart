@@ -82,7 +82,7 @@ class LocationService {
     double lon, 
     {int width = 300, int height = 200, int zoom = 13}
   ) {
-    const String apiKey = 'AIzaSyBb1yFNPOtimCNuJ4S1nYdXZBBNVCJVQZU';
+    const String apiKey = 'AIzaSyBcFW1YmFgcQC7an_-okdJSPgaOvR_CI4M';
     return 'https://maps.googleapis.com/maps/api/staticmap?'
         'center=$lat,$lon&'
         'zoom=$zoom&'
