@@ -1,6 +1,7 @@
 // lib/screens/swipe_screen.dart
 import 'package:cohouse_match/models/filter_options.dart';
 import 'package:cohouse_match/screens/filter_screen.dart';
+import 'package:cohouse_match/screens/chat_screen.dart' as ChatScreenWidget;
 import 'package:cohouse_match/widgets/card_skeleton_loader.dart';
 import 'package:cohouse_match/widgets/empty_state_widget.dart';
 import 'package:cohouse_match/widgets/multi_select_chip.dart';
@@ -342,7 +343,17 @@ class _SwipeScreenState extends State<SwipeScreen> {
                   child: const Text('Start Chatting'),
                   onPressed: () {
                     Navigator.of(context).pop();
-                    // TODO: Navigate to chat
+                    final chatRoomId = DatabaseService().getChatRoomId(currentUser.uid, swipedUser.uid);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreenWidget.ChatScreen(
+                          chatRoomId: chatRoomId,
+                          chatTitle: swipedUser.name ?? 'Chat',
+                          memberIds: [currentUser.uid, swipedUser.uid],
+                        ),
+                      ),
+                    );
                   },
                 ),
                 ElevatedButton(

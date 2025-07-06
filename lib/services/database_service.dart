@@ -12,6 +12,13 @@ class DatabaseService {
   final CollectionReference messagesCollection = FirebaseFirestore.instance.collection('messages');
   final CollectionReference matchesCollection = FirebaseFirestore.instance.collection('matches');
 
+  // Helper to generate a consistent chat room ID
+  String getChatRoomId(String user1Id, String user2Id) {
+    List<String> ids = [user1Id, user2Id];
+    ids.sort();
+    return ids.join('_');
+  }
+
   // Add a review for a user
   Future<void> addReview(String targetUserId, Review review) async {
     await userCollection.doc(targetUserId).collection('reviews').add(review.toMap());
