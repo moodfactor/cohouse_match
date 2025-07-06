@@ -4,6 +4,10 @@ import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/match.dart';
 import 'package:cohouse_match/models/review.dart';
 import 'package:cohouse_match/services/presence_service.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // Import Firebase Storage
+import 'package:image_picker/image_picker.dart'; // Import ImagePicker for XFile
+import 'dart:io'; // Import dart:io for File
+
 class DatabaseService {
   final String? uid;
   DatabaseService({this.uid});
@@ -11,6 +15,7 @@ class DatabaseService {
   final CollectionReference userCollection = FirebaseFirestore.instance.collection('users');
   final CollectionReference messagesCollection = FirebaseFirestore.instance.collection('messages');
   final CollectionReference matchesCollection = FirebaseFirestore.instance.collection('matches');
+  final FirebaseStorage _storage = FirebaseStorage.instance; // Initialize Firebase Storage
 
   // Helper to generate a consistent chat room ID
   String getChatRoomId(String user1Id, String user2Id) {
@@ -22,6 +27,21 @@ class DatabaseService {
   // Add a review for a user
   Future<void> addReview(String targetUserId, Review review) async {
     await userCollection.doc(targetUserId).collection('reviews').add(review.toMap());
+  }
+
+  // Upload image to Firebase Storage
+  Future<String?> uploadImageToChat(XFile imageFile, String chatRoomId) async {
+    try {
+      final String fileName = 'chat_images/${chatRoomId}/${DateTime.now().millisecondsSinceEpoch}_${imageFile.name}';
+      final Reference ref = _storage.ref().child(fileName);
+      final UploadTask uploadTask = ref.putFile(File(imageFile.path));
+      final TaskSnapshot snapshot = await uploadTask;
+      final String downloadUrl = await snapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
   }
 
   // Get all reviews for a user
@@ -91,11 +111,14 @@ class DatabaseService {
     String chatRoomId,
     String senderId,
     String content,
+    {String? imageUrl, MessageType messageType = MessageType.text}
   ) async {
     await messagesCollection.doc(chatRoomId).collection('chats').add({
       'senderId': senderId,
       'content': content,
       'timestamp': FieldValue.serverTimestamp(),
+      'imageUrl': imageUrl,
+      'messageType': messageType.toString().split('.').last,
     });
   }
 

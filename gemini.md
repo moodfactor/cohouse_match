@@ -6,6 +6,33 @@ This document provides a high-level overview of the `cohouse_match` project to a
 
 `cohouse_match` is a mobile application built with Flutter that connects users looking for co-housing or roommates. It appears to be a "swipe-to-match" style app, similar to Tinder, but focused on finding compatible living partners. Key features include user profiles, matching, and real-time chat.
 
+## Gemini CLI Configuration
+
+To ensure the Gemini CLI always uses MCP servers, you need to configure them in a `settings.json` file. This file can be located either in your project's `.gemini/settings.json` or in your user's home directory `~/.gemini/settings.json`.
+
+Here's an example of how to configure an MCP server in `settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "myServer": {
+      "command": "path/to/your/mcp/server/executable",
+      "args": ["--arg1", "value1"],
+      "env": {
+        "API_KEY": "$MY_API_TOKEN"
+      },
+      "cwd": "./server-directory",
+      "timeout": 30000,
+      "trust": false
+    }
+  }
+}
+```
+
+Replace `"myServer"` with a descriptive name for your MCP server, and `"path/to/your/mcp/server/executable"` with the actual path to your MCP server's executable. You can also specify `args`, `env`, `cwd`, `timeout`, and `trust` as needed for your specific MCP server setup.
+
+The Gemini CLI will automatically attempt to connect to and discover tools from all configured MCP servers when it starts.
+
 ## Tech Stack
 
 - **Frontend:** Flutter (Dart)
@@ -33,7 +60,7 @@ This document provides a high-level overview of the `cohouse_match` project to a
 - **User Authentication:** Users can register and log in using Firebase Authentication, including Google Sign-In.
 - **User Profiles:** Users can create and view profiles, likely with details relevant to co-living.
 - **Swiping & Matching:** A swipe-based interface (`swipe_screen.dart`) for users to like or dislike potential roommates.
-- **Real-time Chat:** Once a match is made, users can communicate through a chat interface (`chat_screen.dart`).
+- **Real-time Chat:** Once a match is made, users can communicate through a chat interface (`chat_screen.dart`), now including image sharing capabilities.
 - **Location-based Filtering:** Users can likely filter potential matches based on location (`filter_screen.dart`, `location_picker_screen.dart`).
 - **AI-powered Features:** The `gemini_service.dart` suggests the use of the Gemini API, possibly for profile summaries, compatibility scoring, or other smart features.
 

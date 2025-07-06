@@ -7,6 +7,7 @@ import 'package:cohouse_match/services/database_service.dart';
 import 'package:cohouse_match/services/presence_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // Import image_picker
 
 class ChatScreen extends StatefulWidget {
   final String chatRoomId;
@@ -97,16 +98,58 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _sendMessage() {
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      // Show a loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Uploading image...'), duration: Duration(seconds: 5)),
+      );
+      try {
+        final String? imageUrl = await _db.uploadImageToChat(image, widget.chatRoomId);
+        if (imageUrl != null) {
+          _sendMessage(imageUrl: imageUrl);
+          ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Hide loading indicator
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to upload image.')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading image: $e')),
+        );
+      }
+    }
+  }
+
+  void _sendMessage({String? imageUrl}) {
     // When a message is sent, immediately mark user as not typing.
     _typingTimer?.cancel();
     _setTypingStatus(false);
     
-    final messageText = _messageController.text.trim();
-    if (messageText.isNotEmpty) {
-      final currentUser = _auth.currentUser;
-      if (currentUser != null) {
-        _db.sendMessageInChat(widget.chatRoomId, currentUser.uid, messageText);
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      _db.sendMessageInChat(
+        widget.chatRoomId,
+        currentUser.uid,
+        '', // No content for image messages
+        imageUrl: imageUrl,
+        messageType: MessageType.image,
+      );
+    } else {
+      final messageText = _messageController.text.trim();
+      if (messageText.isNotEmpty) {
+        _db.sendMessageInChat(
+          widget.chatRoomId,
+          currentUser.uid,
+          messageText,
+          messageType: MessageType.text,
+        );
         _messageController.clear();
       }
     }
@@ -250,6 +293,11 @@ class _ChatScreenState extends State<ChatScreen> {
       child: SafeArea(
         child: Row(
           children: [
+            IconButton(
+              icon: const Icon(Icons.image),
+              onPressed: _pickImage,
+              color: Theme.of(context).primaryColor,
+            ),
             Expanded(
               child: TextField(
                 controller: _messageController,
@@ -345,12 +393,48 @@ class _MessageBubble extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      color: isMe ? Colors.white : Colors.black87,
+                  if (message.messageType == MessageType.image && message.imageUrl != null)
+                    GestureDetector(
+                      onTap: () {
+                        // Optional: Implement full-screen image viewer
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            child: Image.network(message.imageUrl!),
+                          ),
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.network(
+                          message.imageUrl!,
+                          width: 200, // Adjust as needed
+                          height: 200, // Adjust as needed
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Text('Could not load image');
+                          },
+                        ),
+                      ),
+                    )
+                  else if (message.messageType == MessageType.text)
+                    Text(
+                      message.content,
+                      style: TextStyle(
+                        color: isMe ? Colors.white : Colors.black87,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
