@@ -51,7 +51,6 @@ class DetailsPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (context) => const LocationPickerScreen()),
               );
-              print("Result from LocationPickerScreen: $result");
               if (result != null && result is Map<String, dynamic>) {
                 final String address = result['address'];
                 final LatLng coords = result['coordinates'];

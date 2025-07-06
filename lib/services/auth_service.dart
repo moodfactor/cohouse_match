@@ -85,7 +85,6 @@ class AuthService {
       
       return result.user;
     } catch (e) {
-      print(e.toString());
       return null;
     }
   }
@@ -115,7 +114,6 @@ class AuthService {
         }
       }
     } catch (e) {
-      print('Error ensuring user data initialized: $e');
       // Re-throw to allow callers to handle the error if needed
       rethrow;
     }
@@ -132,7 +130,6 @@ class AuthService {
       await _googleSignIn.signOut();
       await _auth.signOut();
     } catch (e) {
-      print(e.toString());
     }
   }
 

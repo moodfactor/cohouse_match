@@ -1,5 +1,3 @@
-// lib/screens/chat_screen.dart
-
 import 'dart:async'; // Import async for Timer
 import 'package:cohouse_match/models/message.dart';
 import 'package:cohouse_match/models/user.dart';
@@ -104,6 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (image != null) {
       // Show a loading indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Uploading image...'), duration: Duration(seconds: 5)),
       );
@@ -111,13 +110,16 @@ class _ChatScreenState extends State<ChatScreen> {
         final String? imageUrl = await _db.uploadImageToChat(image, widget.chatRoomId);
         if (imageUrl != null) {
           _sendMessage(imageUrl: imageUrl);
+          if (!mounted) return;
           ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Hide loading indicator
         } else {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Failed to upload image.')),
           );
         }
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error uploading image: $e')),
         );
@@ -286,7 +288,7 @@ class _ChatScreenState extends State<ChatScreen> {
           BoxShadow(
             offset: const Offset(0, -1),
             blurRadius: 2,
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
           ),
         ],
       ),

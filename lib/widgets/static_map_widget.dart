@@ -73,7 +73,7 @@ class StaticMapWidget extends StatelessWidget {
         borderRadius: borderRadius ?? BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha(26),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -135,11 +135,11 @@ class StaticMapWidget extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withAlpha(230),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withAlpha(51),
                         blurRadius: 2,
                         offset: const Offset(0, 1),
                       ),
@@ -198,7 +198,7 @@ class InteractiveStaticMapWidget extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: borderRadius ?? BorderRadius.circular(12),
           border: Border.all(
-            color: onTap != null ? Theme.of(context).primaryColor.withOpacity(0.3) : Colors.grey[300]!,
+            color: onTap != null ? Theme.of(context).primaryColor.withAlpha(77) : Colors.grey[300]!,
             width: onTap != null ? 2 : 1,
           ),
         ),
@@ -220,7 +220,7 @@ class InteractiveStaticMapWidget extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withAlpha(179),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -317,7 +317,7 @@ class CompactMapWidget extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withAlpha(230),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Icon(

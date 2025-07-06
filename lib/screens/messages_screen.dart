@@ -112,10 +112,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 25,
-                                  backgroundImage: chatPartner.photoUrl != null
+                                  backgroundImage: (chatPartner.photoUrl != null && chatPartner.photoUrl!.isNotEmpty)
                                       ? NetworkImage(chatPartner.photoUrl!)
                                       : null,
-                                  child: chatPartner.photoUrl == null
+                                  child: (chatPartner.photoUrl == null || chatPartner.photoUrl!.isEmpty)
                                       ? const Icon(Icons.person)
                                       : null,
                                 ),

@@ -22,7 +22,7 @@ Analyze the compatibility between these two cohousing profiles for living togeth
 - **Bio:** ${currentUser.bio ?? 'N/A'}
 - **Personality:** ${currentUser.personalityTags?.join(', ') ?? 'N/A'}
 - **Lifestyle:** ${currentUser.lifestyleDetails?.join(', ') ?? 'N/A'}
-- **Budget:** \$${currentUser.budget?.toString() ?? 'N/A'}/month
+- **Budget:** \${currentUser.budget?.toString() ?? 'N/A'}/month
 - **Location:** ${currentUser.location ?? 'N/A'}
 - **Age:** ${currentUser.age?.toString() ?? 'N/A'}
 
@@ -31,7 +31,7 @@ Analyze the compatibility between these two cohousing profiles for living togeth
 - **Bio:** ${potentialMatch.bio ?? 'N/A'}
 - **Personality:** ${potentialMatch.personalityTags?.join(', ') ?? 'N/A'}
 - **Lifestyle:** ${potentialMatch.lifestyleDetails?.join(', ') ?? 'N/A'}
-- **Budget:** \$${potentialMatch.budget?.toString() ?? 'N/A'}/month
+- **Budget:** \${potentialMatch.budget?.toString() ?? 'N/A'}/month
 - **Location:** ${potentialMatch.location ?? 'N/A'}
 - **Age:** ${potentialMatch.age?.toString() ?? 'N/A'}
 
@@ -71,7 +71,6 @@ Analyze compatibility for cohousing and return JSON with:
       final text = response.text;
 
       if (text == null) {
-        print('Gemini returned a null response.');
         return null;
       }
 
@@ -81,15 +80,11 @@ Analyze compatibility for cohousing and return JSON with:
       try {
         result = json.decode(text);
       } catch (e) {
-        print('Error decoding JSON response: $e');
-        print('Raw response: $text');
         return null;
       }
 
       // Ensure result is a Map
       if (result is! Map<String, dynamic>) {
-        print('Invalid response type: ${result.runtimeType}');
-        print('Raw response: $text');
         return null;
       }
 
@@ -98,14 +93,11 @@ Analyze compatibility for cohousing and return JSON with:
       if (requiredFields.every((field) => result.containsKey(field))) {
         return result;
       } else {
-        print('Invalid JSON response from Gemini. Missing keys: $text');
         return null;
       }
     } catch (e) {
-      print('Error getting match score from Gemini: $e');
       // It's helpful to see the raw response when debugging.
       if (e is FormatException && e.source != null) {
-        print('Raw Gemini response was: ${e.source}');
       }
       return null;
     }

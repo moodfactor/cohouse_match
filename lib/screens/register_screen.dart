@@ -69,19 +69,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     try {
                       User? result = await _auth.registerWithEmail(email, password);
                       if (result == null) {
+                        if (!mounted) return;
                         setState(() {
                           error = 'Registration failed. Please try again.';
                         });
                       } else {
                         // Force a rebuild of the Wrapper to check profile status
+                        if (!mounted) return; // Add mounted check here
                         Provider.of<User?>(context, listen: false);
                         // Navigate to home wrapper which will handle onboarding if needed
+                        if (!mounted) return;
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => const Wrapper()),
                         );
                       }
                     } on FirebaseAuthException catch (e) {
+                      if (!mounted) return;
                       setState(() {
                         // Provide more specific error messages for common cases
                         if (e.code == 'weak-password') {
@@ -95,6 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         }
                       });
                     } catch (e) {
+                      if (!mounted) return;
                       setState(() {
                         error = 'Registration failed: ${e.toString()}';
                       });

@@ -18,19 +18,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String email = '';
   String password = '';
   String error = '';
-  bool _isMounted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _isMounted = true;
-  }
-
-  @override
-  void dispose() {
-    _isMounted = false;
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,9 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: const InputDecoration(hintText: 'Email'),
                 validator: (val) => val!.isEmpty ? 'Enter an email' : null,
                 onChanged: (val) {
-                  if (_isMounted) {
-                    setState(() => email = val);
-                  }
+                  setState(() => email = val);
                 },
               ),
               const SizedBox(height: 20.0),
@@ -61,9 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 validator: (val) =>
                     val!.length < 6 ? 'Enter a password 6+ chars long' : null,
                 onChanged: (val) {
-                  if (_isMounted) {
-                    setState(() => password = val);
-                  }
+                  setState(() => password = val);
                 },
               ),
               const SizedBox(height: 20.0),
@@ -71,56 +54,51 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('Sign In'),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    if (_isMounted) {
-                      setState(() {
-                        error = ''; // Clear any previous errors
-                      });
-                    }
+                    setState(() {
+                      error = ''; // Clear any previous errors
+                    });
                     
                     try {
                       User? result = await _auth.signInWithEmail(email, password);
                       if (result == null) {
-                        if (_isMounted) {
-                          setState(() {
-                            error = 'Could not sign in with those credentials';
-                          });
-                        }
+                      if (!mounted) return;
+                      setState(() {
+                        error = 'Could not sign in with those credentials';
+                      });
+                    } else {
+                      // Force a rebuild of the Wrapper to check profile status
+                      // This ensures the user data stream is updated
+                      if (!mounted) return;
+                      Provider.of<User?>(context, listen: false);
+                      
+                      // Navigate to home wrapper which will handle onboarding if needed
+                      // Using pushAndRemoveUntil to ensure clean navigation state
+                      if (!mounted) return;
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const Wrapper()),
+                        (route) => false, // Remove all previous routes
+                      );
+                    }
+                  } on FirebaseAuthException catch (e) {
+                    if (!mounted) return;
+                    setState(() {
+                      // Provide more specific error messages for common cases
+                      if (e.code == 'user-not-found') {
+                        error = 'No user found with this email.';
+                      } else if (e.code == 'wrong-password') {
+                        error = 'Wrong password provided.';
+                      } else if (e.code == 'invalid-email') {
+                        error = 'Invalid email address.';
                       } else {
-                        // Force a rebuild of the Wrapper to check profile status
-                        // This ensures the user data stream is updated
-                        Provider.of<User?>(context, listen: false);
-                        
-                        if (_isMounted) {
-                          // Navigate to home wrapper which will handle onboarding if needed
-                          // Using pushAndRemoveUntil to ensure clean navigation state
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const Wrapper()),
-                            (route) => false, // Remove all previous routes
-                          );
-                        }
+                        error = e.message ?? 'An unknown error occurred';
                       }
-                    } on FirebaseAuthException catch (e) {
-                      if (_isMounted) {
-                        setState(() {
-                          // Provide more specific error messages for common cases
-                          if (e.code == 'user-not-found') {
-                            error = 'No user found with this email.';
-                          } else if (e.code == 'wrong-password') {
-                            error = 'Wrong password provided.';
-                          } else if (e.code == 'invalid-email') {
-                            error = 'Invalid email address.';
-                          } else {
-                            error = e.message ?? 'An unknown error occurred';
-                          }
-                        });
-                      }
-                    } catch (e) {
-                      if (_isMounted) {
-                        setState(() {
-                          error = 'An unexpected error occurred: $e';
-                        });
-                      }
+                    });
+                  } catch (e) {
+                    if (!mounted) return;
+                    setState(() {
+                      error = 'An unexpected error occurred: $e';
+                    });
                     }
                   }
                 },
@@ -134,47 +112,37 @@ class _LoginScreenState extends State<LoginScreen> {
               ElevatedButton(
                 child: const Text('Sign In with Google'),
                 onPressed: () async {
-                  if (_isMounted) {
-                    setState(() {
-                      error = ''; // Clear any previous errors
-                    });
-                  }
+                  setState(() {
+                    error = ''; // Clear any previous errors
+                  });
                   
                   try {
                     User? result = await _auth.signInWithGoogle();
                     if (result == null) {
-                      if (_isMounted) {
-                        setState(() {
-                          error = 'Could not sign in with Google';
-                        });
-                      }
+                      setState(() {
+                        error = 'Could not sign in with Google';
+                      });
                     } else {
                       // Force a rebuild of the Wrapper to check profile status
                       // This ensures the user data stream is updated
                       Provider.of<User?>(context, listen: false);
                       
-                      if (_isMounted) {
-                        // Navigate to home wrapper which will handle onboarding if needed
-                        // Using pushAndRemoveUntil to ensure clean navigation state
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => const Wrapper()),
-                          (route) => false, // Remove all previous routes
-                        );
-                      }
+                      // Navigate to home wrapper which will handle onboarding if needed
+                      // Using pushAndRemoveUntil to ensure clean navigation state
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const Wrapper()),
+                        (route) => false, // Remove all previous routes
+                      );
                     }
                   } on FirebaseAuthException catch (e) {
-                    if (_isMounted) {
-                      setState(() {
-                        error = 'Google sign in failed: ${e.toString()}';
-                      });
-                    }
+                    setState(() {
+                      error = 'Google sign in failed: ${e.toString()}';
+                    });
                   } catch (e) {
-                    if (_isMounted) {
-                      setState(() {
-                        error = 'Google sign in failed: ${e.toString()}';
-                      });
-                    }
+                    setState(() {
+                      error = 'Google sign in failed: ${e.toString()}';
+                    });
                   }
                 },
               ),

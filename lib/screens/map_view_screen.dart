@@ -52,7 +52,6 @@ class _MapViewScreenState extends State<MapViewScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error initializing map: $e');
       setState(() {
         _isLoading = false;
       });
@@ -82,7 +81,6 @@ class _MapViewScreenState extends State<MapViewScreen> {
         _currentLocation = LatLng(position.latitude, position.longitude);
       }
     } catch (e) {
-      print('Error getting location: $e');
     }
   }
 
@@ -103,7 +101,6 @@ class _MapViewScreenState extends State<MapViewScreen> {
         _createMarkers();
       });
     } catch (e) {
-      print('Error loading nearby users: $e');
     }
   }
 
@@ -288,7 +285,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
                           Icon(Icons.attach_money, color: Colors.green[600]),
                           const SizedBox(width: 8),
                           Text(
-                            'Budget: \$${user.budget!.toStringAsFixed(0)}/month',
+                            'Budget: \${user.budget!.toStringAsFixed(0)}/month',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w500,
                             ),
@@ -454,7 +451,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withAlpha(13),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),

@@ -1,10 +1,10 @@
 // lib/screens/swipe_screen.dart
 import 'package:cohouse_match/models/filter_options.dart';
 import 'package:cohouse_match/screens/filter_screen.dart';
-import 'package:cohouse_match/screens/chat_screen.dart' as ChatScreenWidget;
+import 'package:cohouse_match/screens/chat_screen.dart' as chat_screen;
 import 'package:cohouse_match/widgets/card_skeleton_loader.dart';
 import 'package:cohouse_match/widgets/empty_state_widget.dart';
-import 'package:cohouse_match/widgets/multi_select_chip.dart';
+
 import 'package:cohouse_match/widgets/static_map_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:cohouse_match/models/user.dart';
@@ -34,16 +34,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
   // Holds the current filter state for the screen
   FilterOptions _activeFilters = FilterOptions.noFilters();
-
-  // Holds the filter values for the filter dialog
-  double? _minBudget;
-  double? _maxBudget;
-  String? _locationFilter;
-  String? _selectedGender;
-  int? _minAge;
-  int? _maxAge;
-  List<String> _selectedLifestyleDetails = [];
-  List<String> _selectedPersonalityTags = [];
 
   @override
   void initState() {
@@ -262,7 +252,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: _getScoreColor(score).withOpacity(0.1),
+                        color: _getScoreColor(score).withAlpha(26),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: _getScoreColor(score)),
                       ),
@@ -347,7 +337,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ChatScreenWidget.ChatScreen(
+                        builder: (context) => chat_screen.ChatScreen(
                           chatRoomId: chatRoomId,
                           chatTitle: swipedUser.name ?? 'Chat',
                           memberIds: [currentUser.uid, swipedUser.uid],
@@ -374,8 +364,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
       }
     }
   }
-
-  // Removed unused _nextUser method
 
   void _showCreateGroupMatchDialog() {
     final currentUser = Provider.of<User?>(context, listen: false);
@@ -445,138 +433,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Group Match Created!')),
                 );
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Filter Users'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: <Widget>[
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Min Budget'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (val) {
-                    _minBudget = double.tryParse(val);
-                  },
-                ),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Max Budget'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (val) {
-                    _maxBudget = double.tryParse(val);
-                  },
-                ),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Location'),
-                  onChanged: (val) {
-                    _locationFilter = val;
-                  },
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  value: _selectedGender,
-                  decoration: const InputDecoration(labelText: 'Gender'),
-                  items: <String>['Male', 'Female', 'Other']
-                      .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      })
-                      .toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedGender = newValue;
-                    });
-                  },
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Min Age'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (val) {
-                    _minAge = int.tryParse(val);
-                  },
-                ),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Max Age'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (val) {
-                    _maxAge = int.tryParse(val);
-                  },
-                ),
-                const SizedBox(height: 20),
-                const Text('Lifestyle Details:'),
-                MultiSelectChip(
-                  [
-                    'Pet-friendly',
-                    'Night Owl',
-                    'Early Bird',
-                    'Vegetarian',
-                    'Vegan',
-                    'Remote Worker',
-                    'Student',
-                  ],
-                  initialSelection: _selectedLifestyleDetails,
-                  onSelectionChanged: (selectedList) {
-                    _selectedLifestyleDetails = selectedList;
-                  },
-                ),
-                const SizedBox(height: 20),
-                const Text('Personality Tags:'),
-                MultiSelectChip(
-                  [
-                    'Introvert',
-                    'Extrovert',
-                    'Thinker',
-                    'Feeler',
-                    'Organized',
-                    'Spontaneous',
-                  ],
-                  initialSelection: _selectedPersonalityTags,
-                  onSelectionChanged: (selectedList) {
-                    _selectedPersonalityTags = selectedList;
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Apply'),
-              onPressed: () {
-                setState(() {
-                  _activeFilters = FilterOptions(
-                    budgetRange: _minBudget != null && _maxBudget != null
-                        ? RangeValues(_minBudget!, _maxBudget!)
-                        : null,
-                    ageRange: _minAge != null && _maxAge != null
-                        ? RangeValues(_minAge!.toDouble(), _maxAge!.toDouble())
-                        : null,
-                    location: _locationFilter,
-                    gender: _selectedGender,
-                    lifestyleDetails: _selectedLifestyleDetails,
-                    personalityTags: _selectedPersonalityTags,
-                  );
-                });
-                _loadUsers(); // Reload users with new filters
                 Navigator.of(context).pop();
               },
             ),
@@ -707,7 +563,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                  colors: [Colors.transparent, Colors.black.withAlpha(204)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   stops: const [0.6, 1.0],
@@ -748,7 +604,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     height: 80,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                      border: Border.all(color: Colors.white.withAlpha(77), width: 2),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
@@ -774,7 +630,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     if (budget != null)
                       _buildInfoChip(
                         Icons.attach_money,
-                        '\$${budget.toStringAsFixed(0)}/mo',
+                        '\$${budget.round()}/mo',
                       ),
                   ],
                 ),
@@ -790,7 +646,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withAlpha(128),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -814,9 +670,9 @@ class _SwipeScreenState extends State<SwipeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: _getScoreColor(score).withOpacity(0.1),
+        color: _getScoreColor(score).withAlpha(26),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _getScoreColor(score).withOpacity(0.3)),
+        border: Border.all(color: _getScoreColor(score).withAlpha(77)),
       ),
       child: Column(
         children: [

@@ -127,7 +127,6 @@ class LocationService {
       
       return users;
     } catch (e) {
-      print('Error getting users in radius: $e');
       return [];
     }
   }

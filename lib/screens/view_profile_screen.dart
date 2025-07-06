@@ -129,7 +129,7 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoTile(Icons.attach_money, 'Budget', '\$${user.budget?.toStringAsFixed(0) ?? 'N/A'} / month'),
+          _buildInfoTile(Icons.attach_money, 'Budget', '\${user.budget?.toStringAsFixed(0) ?? "Not specified"}  '),
           const SizedBox(height: 20),
           _buildTagsSection('Personality', user.personalityTags),
           const SizedBox(height: 20),

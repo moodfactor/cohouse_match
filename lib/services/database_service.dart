@@ -32,14 +32,13 @@ class DatabaseService {
   // Upload image to Firebase Storage
   Future<String?> uploadImageToChat(XFile imageFile, String chatRoomId) async {
     try {
-      final String fileName = 'chat_images/${chatRoomId}/${DateTime.now().millisecondsSinceEpoch}_${imageFile.name}';
+      final String fileName = 'chat_images/$chatRoomId/${DateTime.now().millisecondsSinceEpoch}_${imageFile.name}';
       final Reference ref = _storage.ref().child(fileName);
       final UploadTask uploadTask = ref.putFile(File(imageFile.path));
       final TaskSnapshot snapshot = await uploadTask;
       final String downloadUrl = await snapshot.ref.getDownloadURL();
       return downloadUrl;
     } catch (e) {
-      print('Error uploading image: $e');
       return null;
     }
   }
@@ -174,7 +173,6 @@ class DatabaseService {
         .where('members', arrayContains: userId)
         .snapshots()
         .map((snapshot) {
-          print('Fetched ${snapshot.docs.length} matches for user $userId'); // Added print statement
           return snapshot.docs
               .map(
                 (doc) =>
@@ -210,7 +208,6 @@ class DatabaseService {
       }
       return null;
     } catch (e) {
-      print('Error getting user data: $e');
       return null;
     }
   }

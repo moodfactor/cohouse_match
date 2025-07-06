@@ -5,14 +5,11 @@ class FirebaseAdminService {
   Future<void> deleteProfileImages() async {
     try {
       final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('deleteProfileImages');
-      final HttpsCallableResult result = await callable.call();
-      print('Delete Images Function Result: ${result.data}');
+      await callable.call();
       // You might want to show a user-friendly message here (e.g., a SnackBar)
-    } on FirebaseFunctionsException catch (e) {
-      print('Error calling deleteProfileImages: ${e.code} - ${e.message}');
+    } on FirebaseFunctionsException {
       // Handle specific Firebase Functions errors
     } catch (e) {
-      print('Unexpected error: $e');
       // Handle other potential errors
     }
   }
@@ -33,16 +30,13 @@ class FirebaseAdminService {
 
     try {
       final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('updateAllUserProfiles');
-      final HttpsCallableResult result = await callable.call(<String, dynamic>{
+      await callable.call(<String, dynamic>{
         'photoUrls': imageUrls,
       });
-      print('Update Profiles Function Result: ${result.data}');
       // You might want to show a user-friendly message here (e.g., a SnackBar)
-    } on FirebaseFunctionsException catch (e) {
-      print('Error calling updateAllUserProfiles: ${e.code} - ${e.message}');
+    } on FirebaseFunctionsException {
       // Handle specific Firebase Functions errors
     } catch (e) {
-      print('Unexpected error: $e');
       // Handle other potential errors
     }
   }

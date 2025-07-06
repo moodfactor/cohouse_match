@@ -4,7 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cohouse_match/services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cohouse_match/main.dart';
-import 'package:flutter/material.dart' show MaterialPageRoute, BuildContext;
+import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cohouse_match/screens/chat_screen.dart';
@@ -42,7 +42,6 @@ class NotificationService {
 
     // Get the device token
     final token = await _fcm.getToken();
-    print("FCM Token: $token"); // For testing
     // Save the initial token to the database
     if (token != null) {
       saveTokenToDatabase(FirebaseAuth.instance.currentUser?.uid ?? '');
@@ -50,24 +49,19 @@ class NotificationService {
 
     // Listen for token refreshes
     _fcm.onTokenRefresh.listen((newToken) {
-      print("FCM Token refreshed: $newToken");
       saveTokenToDatabase(FirebaseAuth.instance.currentUser?.uid ?? '');
     });
     
     // Handle notifications when the app is in the foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Got a message whilst in the foreground!');
-      print('Message data: ${message.data}');
 
       if (message.notification != null) {
-        print('Message also contained a notification: ${message.notification}');
         _showLocalNotification(message);
       }
     });
 
     // Handle notifications when the app is in the background or terminated
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('A new onMessageOpenedApp event was published!');
       _handleNotificationNavigation(message.data['chatRoomId']);
     });
   }
